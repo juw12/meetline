@@ -1,0 +1,80 @@
+/* Direction C: field map (references: Ordnance Survey Explorer sheets, printed walking maps). */
+:root {
+  --ink: #1e2a3a;
+  --muted: #5d6673;
+  --line: #ddd5c6;
+  --soft: #ece6d9;
+  --paper: #f7f3ea;
+  --accent: #c4501a;
+  --accent-ink: #ffffff;
+  --accent-soft: #f6e3d6;
+  --radius: 6px;
+  --sans: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --display: "Fraunces", Georgia, serif;
+  --mono: "Source Sans 3", "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font: 16px/1.45 var(--sans); color: var(--ink); background: var(--paper); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
+
+.sheet { position: fixed; inset: 0; }
+#map { position: absolute; inset: 0; background: #e9e4d8; }
+.leaflet-tile-pane { filter: sepia(0.28) saturate(0.75) contrast(0.95) brightness(1.02); }
+
+.panel { position: absolute; z-index: 800; top: 20px; left: 20px; bottom: 20px; width: 410px; overflow-y: auto; background: var(--paper); border: 1px solid #cfc6b4; border-radius: var(--radius); box-shadow: 0 2px 0 rgba(30, 42, 58, 0.08), 0 12px 32px rgba(30, 42, 58, 0.16); display: flex; flex-direction: column; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 2px solid var(--ink); }
+.brand-mark { width: 26px; height: 26px; fill: none; stroke: var(--ink); stroke-width: 1.8; }
+.brand-mark circle { fill: var(--paper); }
+.brand-mark .brand-meet { fill: var(--accent); stroke: var(--accent); }
+.brand-name { font: 600 20px var(--display); margin-right: auto; }
+.block { border-bottom-color: var(--line); }
+.title { font: 600 30px/1.1 var(--display); letter-spacing: -0.01em; margin: 0 0 8px; }
+.lede { color: var(--muted); margin: 0 0 14px; }
+.label { color: var(--ink); letter-spacing: 0.1em; }
+.search input { background: #fffdf8; border-color: #c9bfab; }
+.add-row { display: flex; gap: 8px; margin-top: 10px; }
+.btn-quiet { background: transparent; border-color: #b9ae98; }
+.btn-quiet:hover, .btn-quiet.is-on { background: var(--soft); }
+.btn-primary:hover { background: #a54214; }
+.chip { background: transparent; border-color: #b9ae98; }
+.chip.is-on { background: var(--ink); border-color: var(--ink); }
+.segs { border-color: #b9ae98; }
+.seg { background: transparent; }
+.seg + .seg { border-left-color: #b9ae98; }
+.seg.is-on { background: var(--accent-soft); box-shadow: inset 0 -3px 0 var(--accent); }
+.mode { border-color: var(--line); }
+.mode-btn.is-on { background: var(--ink); }
+.person-name:hover { background: var(--soft); }
+.status { background: var(--soft); border-bottom-color: var(--line); }
+.detail { background: #fffdf8; border-bottom-color: var(--line); }
+.detail-kicker { color: var(--accent); }
+.detail-name { font: 600 26px/1.15 var(--display); }
+.detail-figure-num { font: 600 30px/1 var(--display); }
+.leg-time { font: 600 16px var(--sans); }
+.leg { border-top-color: var(--line); }
+.venue-hit { background: transparent; border-color: var(--line); }
+.venue.is-selected .venue-hit { background: #fffdf8; border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.venue-rank { background: transparent; border: 1.5px solid var(--ink); font: 600 13px/21px var(--sans); }
+.venue.is-selected .venue-rank { background: var(--accent); border-color: var(--accent); }
+.venue-name { font: 600 17px var(--display); }
+.venue-stats b { font: 600 14px var(--sans); }
+.strip { border-bottom-color: #cfc6b4; }
+.strip-span { background: #ddd2bd; }
+.foot { margin-top: auto; padding: 14px 20px; font-size: 13px; color: var(--muted); }
+.scale-note { position: absolute; z-index: 700; right: 12px; top: 12px; padding: 4px 10px; background: rgba(247, 243, 234, 0.92); border: 1px solid #cfc6b4; border-radius: 4px; font-size: 12px; color: var(--muted); }
+.pin-venue { border-color: var(--ink); }
+.pin-venue.is-selected { background: var(--accent); }
+.pin-label { background: var(--paper); border: 1px solid #cfc6b4; }
+.pin-label b { font: 600 14px var(--display); }
+.search-ring { fill: var(--accent); stroke: var(--accent); }
+.leaflet-container { font-family: var(--sans); }
+
+@media (max-width: 760px) {
+  .sheet { position: static; }
+  #map { position: sticky; top: 0; height: 46vh; min-height: 300px; z-index: 1; }
+  .panel { position: relative; z-index: 2; top: 0; left: 0; bottom: auto; width: auto; overflow: visible; border: 0; border-radius: 0; box-shadow: 0 -4px 16px rgba(30, 42, 58, 0.12); }
+  .scale-note { display: none; }
+  .title { font-size: 25px; }
+  .block, .detail { padding: 16px; }
+  .add-row .btn { flex: 1; }
+}

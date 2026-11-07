@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2710%27 fill=%27%23111417%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%274%27 fill=%27%23ffffff%27/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meetline: find the fairest place to meet</title>
+<meta name="description" content="Add two or more people, see the place where nobody travels too long, and the road route for each person.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="../../src/base.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="dir-C">
+<div class="sheet">
+  <div id="map" aria-label="Map"></div>
+  <aside id="panel" class="panel" aria-label="Plan">
+    <header class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="6" cy="22" r="3.2"/><circle cx="26" cy="22" r="3.2"/><circle cx="16" cy="6" r="3.2"/><path d="M8.6 20.3L14.2 13M23.4 20.3L17.8 13M16 9.4V13"/><circle cx="16" cy="15" r="2.4" class="brand-meet"/></svg><span class="brand-name">Meetline</span><button type="button" class="btn btn-quiet btn-small" data-action="share-top">Share</button></header>
+    <section class="block">
+      <h1 class="title">Where should we meet?</h1>
+      <p class="lede">Add everyone. Meetline picks the place where the longest journey is as short as possible and draws each route.</p>
+      <div class="search">
+          <label class="sr" for="search-input">Add a person by address or place</label>
+          <input id="search-input" type="search" placeholder="Add a person: address or place" autocomplete="off" role="combobox" aria-controls="search-suggest" aria-expanded="false">
+          <ul id="search-suggest" class="suggest" role="listbox" hidden></ul>
+        </div>
+      <div class="add-row">
+        <button id="btn-locate" type="button" class="btn btn-primary"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Use my location</button>
+          <button id="btn-pick" type="button" class="btn btn-quiet" aria-pressed="false">Pick on map</button>
+      </div>
+    </section>
+    <section class="block">
+      <div class="block-head"><h2 class="label">People</h2><span id="people-count" class="count"></span></div>
+        <ul id="people" class="people"></ul>
+        <div id="empty" class="empty">
+          <p id="empty-need" class="empty-need">Add at least two people.</p>
+          <p class="empty-hint">Right-click or long-press the map to drop someone there. <button type="button" class="link" data-action="demo">Try a sample group in Batam</button></p>
+        </div>
+    </section>
+    <section class="block">
+      <h2 class="label">Meet at</h2>
+        <div id="categories" class="chips" role="group" aria-label="Place type"></div>
+        <div id="objective" class="segs" role="group" aria-label="Ranking"></div>
+    </section>
+    <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+    <section id="detail" class="detail" hidden></section>
+    <section id="results-wrap" class="block" hidden>
+        <h2 id="results-label" class="label">Ranked</h2>
+        <ol id="results" class="results"></ol>
+      </section>
+    <footer class="foot">Locations stay in this browser and in links you share. Maps and routes from OpenStreetMap.</footer>
+  </aside>
+  <div class="scale-note" aria-hidden="true">Routes: OSRM on OpenStreetMap data</div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="../../vendor/leaflet/leaflet.js"></script>
+<script src="../../src/geo.js"></script>
+<script src="../../src/demo-snapshot.js"></script>
+<script>
+window.MEETLINE_CONFIG = { colors: ['#2457A5', '#D2581A', '#3C7F3A', '#B3282D', '#1C7A80', '#9C7414', '#4B4F55', '#83552F'] };
+</script>
+<script src="../../src/app.js"></script>
+</body>
+</html>

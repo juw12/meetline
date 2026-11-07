@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>Meetline geo tests</title>
+</head>
+<body>
+<pre id="out"></pre>
+<script src="../src/geo.js"></script>
+<script>
+(function () {
+  const G = window.MeetGeo;
+  const results = [];
+  function check(name, condition, detail) {
+    results.push({ name, pass: Boolean(condition), detail: detail === undefined ? '' : String(detail) });
+  }
+  function near(a, b, tolerance) {
+    return Math.abs(a - b) <= tolerance;
+  }
+
+  // Haversine: Batam Centre to Nagoya Hill is roughly 6-7 km in a straight line.
+  const batamCentre = { lat: 1.1281, lon: 104.0529 };
+  const nagoya = { lat: 1.1440, lon: 104.0110 };
+  const d = G.haversine(batamCentre, nagoya);
+  check('haversine city scale', d > 4000 && d < 6000, Math.round(d) + ' m');
+  check('haversine zero', G.haversine(nagoya, nagoya) === 0);
+  // One degree of latitude is about 111.2 km.
+  const oneDeg = G.haversine({ lat: 0, lon: 0 }, { lat: 1, lon: 0 });
+  check('haversine one degree', near(oneDeg, 111195, 50), Math.round(oneDeg));
+
+  // Minimax centre of two points is their midpoint; both distances equal.
+  const a = { lat: 1.10, lon: 104.00 };
+  const b = { lat: 1.10, lon: 104.10 };
+  const mm = G.minimaxCenter([a, b]);
+  const da = G.haversine(mm, a);
+  const db = G.haversine(mm, b);
+  check('minimax two points equidistant', Math.abs(da - db) < 25, Math.round(da) + ' vs ' + Math.round(db));
+
+  // Minimax of a triangle: the max distance must not exceed the centroid's max distance.
+  const tri = [{ lat: 1.05, lon: 104.00 }, { lat: 1.15, lon: 104.02 }, { lat: 1.08, lon: 104.12 }];
+  const maxFrom = (c) => Math.max(...tri.map((p) => G.haversine(c, p)));
+  const triMm = G.minimaxCenter(tri);
+  check('minimax beats centroid on longest leg', maxFrom(triMm) <= maxFrom(G.centroid(tri)) + 1,
+    Math.round(maxFrom(triMm)) + ' <= ' + Math.round(maxFrom(G.centroid(tri))));
+
+  // Geometric median minimises the sum; it must beat the centroid on total distance.
+  const sumFrom = (c) => tri.reduce((s, p) => s + G.haversine(c, p), 0);
+  const med = G.geometricMedian(tri);
+  check('median beats centroid on total', sumFrom(med) <= sumFrom(G.centroid(tri)) + 1,
+    Math.round(sumFrom(med)) + ' <= ' + Math.round(sumFrom(G.centroid(tri))));
+
+  // Ranking: fair objective picks smallest longest trip; total picks smallest sum.
+  const candidates = [{ id: 'x', order: 0 }, { id: 'y', order: 1 }, { id: 'z', order: 2 }];
+  // durations[person][candidate] in seconds
+  const durations = [
+    [600, 900, 300],
+    [1800, 950, 2400],
+  ];
+  const distances = [[1, 1, 1], [1, 1, 1]];
+  const fair = G.rankCandidates(candidates, durations, distances, 'fair');
+  check('fair ranks smallest longest trip first', fair[0].id === 'y', fair.map((v) => v.id).join(','));
+  const total = G.rankCandidates(candidates, durations, distances, 'total');
+  check('total ranks smallest sum first', total[0].id === 'y' && total[1].id === 'x', total.map((v) => v.id).join(','));
+  check('gap computed', fair[0].gap === 50, fair[0].gap);
+  const withGap = G.rankCandidates(candidates, [[600, NaN, 300], [900, 900, 900]], distances, 'fair');
+  check('unreachable candidate ranks last', withGap[withGap.length - 1].id === 'y' && withGap[withGap.length - 1].reachable === false);
+
+  // Share link round-trip, including a non-ASCII name and the venue.
+  const plan = {
+    people: [
+      { name: 'Juwen', lat: 1.04512, lon: 104.03021, mode: 'car' },
+      { name: 'Sari & Co', lat: 1.14401, lon: 104.01103, mode: 'bike' },
+      { name: 'Andi José', lat: 1.12812, lon: 104.05291, mode: 'foot' },
+    ],
+    category: 'cafe',
+    objective: 'total',
+    venue: { name: 'toko juice', lat: 1.12, lon: 104.03 },
+  };
+  const decoded = G.decodePlan(G.encodePlan(plan));
+  check('plan round-trip people', decoded.people.length === 3 && decoded.people[1].name === 'Sari & Co' && decoded.people[2].name === 'Andi José');
+  check('plan round-trip coords', near(decoded.people[0].lat, 1.04512, 1e-6) && near(decoded.people[0].lon, 104.03021, 1e-6));
+  check('plan round-trip modes', decoded.people.map((p) => p.mode).join() === 'car,bike,foot');
+  check('plan round-trip options', decoded.category === 'cafe' && decoded.objective === 'total' && decoded.venue.name === 'toko juice');
+  const junk = G.decodePlan('p=bad~999~999~car|ok~1~2~plane');
+  check('decode rejects invalid coords and modes', junk.people.length === 1 && junk.people[0].mode === 'car');
+
+  // Formatting.
+  check('format 59 s', G.formatDuration(59) === '1 min');
+  check('format 27 min', G.formatDuration(27 * 60) === '27 min');
+  check('format 1 h 05', G.formatDuration(65 * 60) === '1 h 05');
+  check('format distance m', G.formatDistance(420) === '420 m');
+  check('format distance km', G.formatDistance(9040) === '9.0 km' && G.formatDistance(14200) === '14 km');
+
+  // Fallback estimate: 10 km straight line by car at 30 km/h with 1.35 detour is 27 min.
+  const est = G.estimateTrip({ lat: 0, lon: 0 }, { lat: 0.0899322, lon: 0 }, 'car');
+  check('fallback estimate', near(est.duration / 60, 27, 0.2), (est.duration / 60).toFixed(2) + ' min');
+
+  const failed = results.filter((r) => !r.pass);
+  window.TEST_RESULTS = { total: results.length, failed: failed.length, results };
+  document.getElementById('out').textContent = results.map((r) => (r.pass ? 'PASS ' : 'FAIL ') + r.name + (r.detail ? '  (' + r.detail + ')' : '')).join('\n');
+  document.title = failed.length ? 'FAIL' : 'PASS';
+})();
+</script>
+</body>
+</html>

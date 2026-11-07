@@ -1,0 +1,98 @@
+/* Direction B: transit board (references: SBB station signage, split-flap departure boards). */
+:root {
+  --ink: #111417;
+  --muted: #5a6068;
+  --line: #e2e4e7;
+  --soft: #f3f4f5;
+  --paper: #ffffff;
+  --accent: #c8102e;
+  --accent-ink: #ffffff;
+  --accent-soft: #fbe9ec;
+  --board: #111417;
+  --board-ink: #f5f5f2;
+  --board-num: #ffc20e;
+  --radius: 4px;
+  --sans: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --mono: "Barlow Condensed", "Arial Narrow", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font: 15px/1.45 var(--sans); color: var(--ink); background: var(--paper); -webkit-font-smoothing: antialiased; }
+
+.topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 900; height: 64px; display: flex; align-items: center; gap: 16px; padding: 0 16px; background: var(--board); color: var(--board-ink); }
+.brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.brand-mark { width: 28px; height: 28px; fill: none; stroke: var(--board-ink); stroke-width: 1.8; }
+.brand-mark circle { fill: var(--board); }
+.brand-mark .brand-meet { fill: var(--board-num); stroke: var(--board-num); }
+.brand-name { font: 600 22px/1 var(--display); letter-spacing: 0.02em; text-transform: uppercase; }
+.topbar-add { display: flex; gap: 8px; align-items: center; flex: 1; max-width: 760px; }
+.topbar .search { flex: 1; }
+.topbar .search input { height: 40px; border-radius: var(--radius); border: 0; background: #ffffff; color: var(--ink); }
+.btn-ghost { background: transparent; color: var(--board-ink); border-color: rgba(255, 255, 255, 0.35); margin-left: auto; }
+.btn-ghost:hover { border-color: var(--board-ink); }
+.topbar .btn-quiet { background: transparent; color: var(--board-ink); border-color: rgba(255, 255, 255, 0.35); }
+.topbar .btn-quiet:hover, .topbar .btn-quiet.is-on { background: rgba(255, 255, 255, 0.1); border-color: var(--board-ink); }
+.btn-primary:hover { background: #a50d26; }
+
+.stage { position: fixed; inset: 64px 0 0 0; }
+#map { position: absolute; inset: 0; background: #e8e9ea; }
+.leaflet-tile-pane { filter: grayscale(0.85) contrast(1.02) brightness(1.03); }
+
+.panel { position: absolute; z-index: 800; top: 16px; right: 16px; bottom: 16px; width: 420px; background: var(--paper); border-radius: var(--radius); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; overflow: hidden; }
+.panel-scroll { overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
+.sheet-handle { display: none; }
+.intro { border-bottom: 1px solid var(--line); }
+.title { font: 600 30px/1.05 var(--display); text-transform: uppercase; letter-spacing: 0.01em; margin: 0 0 4px; }
+.lede { margin: 0; color: var(--muted); }
+.label { font: 600 15px var(--display); letter-spacing: 0.08em; color: var(--ink); }
+.count { font: 500 14px var(--display); }
+
+/* The selected place reads like a departure board. */
+.detail { background: var(--board); color: var(--board-ink); border-bottom: 0; }
+.detail-kicker { color: var(--board-num); font-family: var(--display); font-size: 14px; letter-spacing: 0.12em; }
+.detail-name { font: 600 30px/1.05 var(--display); text-transform: uppercase; letter-spacing: 0.01em; }
+.detail-meta { color: #b9bdc2; }
+.detail-figure-num { font: 600 40px/1 var(--display); color: var(--board-num); }
+.detail-figure-label { color: #b9bdc2; text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; }
+.detail .leg { border-top-color: rgba(255, 255, 255, 0.14); }
+.detail .leg-mode { color: #b9bdc2; }
+.detail .leg-time { font: 600 22px var(--display); color: var(--board-num); }
+.detail .leg-go { color: var(--board-ink); border: 1px solid rgba(255, 255, 255, 0.3); }
+.detail .leg-go:hover { background: rgba(255, 255, 255, 0.08); }
+.detail .btn-quiet { background: transparent; color: var(--board-ink); border-color: rgba(255, 255, 255, 0.35); }
+.detail .leg-mark { box-shadow: 0 0 0 2px var(--board); }
+
+.status { background: var(--soft); }
+.chip { border-radius: var(--radius); font-weight: 500; }
+.seg.is-on { background: var(--soft); box-shadow: inset 0 -3px 0 var(--accent); }
+.venue-hit { border-radius: var(--radius); }
+.venue.is-selected .venue-hit { border-color: var(--ink); box-shadow: inset 4px 0 0 var(--accent); }
+.venue-rank { font: 600 15px/24px var(--display); background: var(--board); color: var(--board-num); }
+.venue.is-selected .venue-rank { background: var(--accent); color: #fff; }
+.venue-name { font: 600 18px/1.2 var(--display); text-transform: uppercase; letter-spacing: 0.01em; }
+.venue-stats b { font: 600 15px var(--display); }
+.mode-btn.is-on { background: var(--board); }
+.pin-venue.is-selected { background: var(--accent); }
+.pin-label b { font: 600 15px var(--display); text-transform: uppercase; }
+.search-ring { fill: var(--accent); stroke: var(--accent); }
+.foot { margin-top: auto; padding: 14px 20px; font-size: 12px; color: var(--muted); }
+.leaflet-container { font-family: var(--sans); }
+
+@media (max-width: 760px) {
+  .topbar { height: auto; flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+  .topbar-add { order: 3; flex: 1 1 100%; flex-wrap: nowrap; }
+  .topbar .search { flex: 1 1 auto; min-width: 0; }
+  .topbar-add .btn { flex: none; width: 44px; height: 40px; padding: 0; font-size: 0; gap: 0; justify-content: center; }
+  .topbar-add .btn svg { margin: 0; }
+  .stage { top: 108px; }
+  .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 46%; border-radius: 12px 12px 0 0; }
+  .leaflet-control-zoom { display: none; }
+  .panel.is-expanded { height: calc(100% - 24px); }
+  .sheet-handle { display: grid; place-items: center; height: 22px; border: 0; background: var(--paper); cursor: pointer; flex: none; }
+  .sheet-handle span { width: 40px; height: 4px; border-radius: 2px; background: #c4c8cc; }
+  .title { font-size: 24px; }
+  .detail-name { font-size: 24px; }
+  .detail-figure-num { font-size: 32px; }
+  .block, .detail { padding: 14px 16px; }
+}

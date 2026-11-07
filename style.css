@@ -1,0 +1,116 @@
+/* Meetline: dispatch console (references: Flightradar24, ride-hail dispatch screens). See design.md. */
+:root {
+  --ink: #e7eaee;
+  --muted: #98a2ad;
+  --line: #2a3038;
+  --soft: #1f242b;
+  --paper: #161a1f;
+  --bg: #0e1114;
+  --accent: #f2b233;
+  --accent-ink: #15120a;
+  --accent-soft: #2b2416;
+  --radius: 6px;
+  --sans: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font: 14px/1.45 var(--sans); color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
+
+.console { display: grid; grid-template-columns: 330px minmax(0, 1fr) 380px; grid-template-rows: 60px minmax(0, 1fr); height: 100vh; height: 100dvh; }
+.toolbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 0 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: baseline; gap: 10px; flex: none; }
+.brand-mark { width: 24px; height: 24px; fill: none; stroke: var(--ink); stroke-width: 1.8; align-self: center; }
+.brand-mark circle { fill: var(--paper); }
+.brand-mark .brand-meet { fill: var(--accent); stroke: var(--accent); }
+.brand-name { font-weight: 700; font-size: 17px; }
+.brand-sub { font: 500 11px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.toolbar-add { flex: 1; display: flex; gap: 8px; max-width: 760px; }
+.toolbar .search { flex: 1; }
+.col { background: var(--paper); overflow-y: auto; display: flex; flex-direction: column; }
+.col-left { border-right: 1px solid var(--line); }
+.col-right { border-left: 1px solid var(--line); }
+.col-map { position: relative; min-width: 0; }
+#map { position: absolute; inset: 0; background: #1b1f24; }
+.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) grayscale(0.6) brightness(0.82) contrast(0.92); }
+
+.title { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.block .block-head .label { display: none; }
+.label { color: var(--muted); }
+.count { color: var(--muted); }
+.search input { background: var(--bg); border-color: var(--line); color: var(--ink); height: 40px; }
+.search input::placeholder { color: #7d8792; }
+.suggest { background: var(--paper); border-color: var(--line); }
+.suggest-item.is-active, .suggest-item:hover { background: var(--soft); }
+.btn-primary:hover { background: #ffc44f; }
+.btn-quiet { background: transparent; color: var(--ink); border-color: #3a414a; }
+.btn-quiet:hover, .btn-quiet.is-on { background: var(--soft); border-color: var(--ink); }
+.person-name:focus { background: var(--bg); }
+.person-name:hover { background: var(--soft); }
+.mode { border-color: var(--line); }
+.mode-btn.is-on { background: var(--ink); color: var(--bg); }
+.icon-btn:hover { background: var(--soft); }
+.chip { background: transparent; border-color: #3a414a; }
+.chip:hover { border-color: var(--ink); }
+.chip.is-on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.segs { border-color: #3a414a; }
+.seg { background: transparent; }
+.seg + .seg { border-left-color: #3a414a; }
+.seg.is-on { background: var(--accent-soft); box-shadow: inset 0 -3px 0 var(--accent); }
+.status { background: var(--soft); border-bottom-color: var(--line); color: var(--muted); }
+.status[data-kind="error"] { color: #ffb4b4; background: #3a1c1c; }
+.detail { background: var(--paper); }
+.detail-kicker { color: var(--accent); }
+.detail-figure-num { color: var(--accent); font-size: 26px; }
+.leg-go { color: var(--accent); }
+.leg-go:hover { background: var(--accent-soft); }
+.leg-mark, .person-mark { box-shadow: 0 0 0 2px var(--paper); color: #0e1114; }
+.venue-hit { background: transparent; border-color: var(--line); }
+.venue-hit:hover { border-color: #4a525c; }
+.venue.is-selected .venue-hit { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); background: #1b1f25; }
+.venue-rank { background: var(--soft); }
+.venue.is-selected .venue-rank { background: var(--accent); color: var(--accent-ink); }
+.venue-stats b { color: var(--ink); }
+.strip { border-bottom-color: var(--line); }
+.strip-span { background: #3a414a; }
+.tick { border-color: var(--paper); }
+.foot { margin-top: auto; padding: 14px 20px; font-size: 12px; color: var(--muted); }
+.toast { background: var(--ink); color: var(--bg); }
+.link { color: var(--accent); }
+.pin-person { color: #0e1114; border-color: #0e1114; }
+.pin-venue { background: var(--paper); border-color: var(--ink); }
+.pin-venue span { color: var(--ink); }
+.pin-venue.is-selected { background: var(--accent); border-color: #0e1114; }
+.pin-venue.is-selected span { color: var(--accent-ink); }
+.pin-label { background: var(--paper); color: var(--muted); }
+.pin-label b { color: var(--ink); }
+.pin-center { border-color: var(--ink); background: rgba(14, 17, 20, 0.6); }
+.pin-center::after { background: var(--ink); }
+.search-ring { fill: var(--accent); stroke: var(--accent); }
+.leaflet-container { font-family: var(--sans); }
+.leaflet-bar a { background: var(--paper); color: var(--ink); border-bottom-color: var(--line); }
+.leaflet-control-attribution { background: rgba(22, 26, 31, 0.85) !important; color: var(--muted); }
+.leaflet-control-attribution a { color: var(--ink); }
+
+@media (max-width: 1100px) {
+  .console { grid-template-columns: 320px minmax(0, 1fr); grid-template-rows: 60px minmax(0, 1fr) auto; }
+  .brand-sub { display: none; }
+  .toolbar .search { min-width: 200px; }
+  .col-right { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); max-height: 45vh; }
+}
+@media (max-width: 760px) {
+  .console { display: flex; flex-direction: column; height: auto; }
+  .toolbar { flex-wrap: wrap; padding: 10px 12px; gap: 8px; position: static; }
+  .toolbar-add { order: 3; flex: 1 1 100%; flex-wrap: wrap; }
+  .toolbar .search { flex: 1 1 100%; }
+  .toolbar-add .btn { flex: 1; }
+  .toolbar > .btn-quiet { margin-left: auto; }
+  .col-map { height: 46vh; min-height: 300px; order: 1; }
+  .col-right { order: 2; max-height: none; overflow: visible; border-top: 1px solid var(--line); }
+  .col-left { order: 3; overflow: visible; border-right: 0; border-top: 1px solid var(--line); }
+  .block, .detail { padding: 14px 16px; }
+}
+@media (max-width: 359px) {
+  /* The result card repeats the label; keep the map pin clean on the narrowest phones. */
+  .pin-label { display: none; }
+}
