@@ -32,7 +32,8 @@ body { font: 14px/1.45 var(--sans); color: var(--ink); background: var(--bg); -w
 .col-right { border-left: 1px solid var(--line); }
 .col-map { position: relative; min-width: 0; }
 #map { position: absolute; inset: 0; background: #1b1f24; }
-.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) grayscale(0.6) brightness(0.82) contrast(0.92); }
+/* Neutral charcoal basemap: the coloured routes are the only colour on the map. */
+.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) grayscale(1) brightness(0.8) contrast(0.95); }
 
 .title { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
 .block .block-head .label { display: none; }
@@ -92,6 +93,47 @@ body { font: 14px/1.45 var(--sans); color: var(--ink); background: var(--bg); -w
 .leaflet-control-attribution { background: rgba(22, 26, 31, 0.85) !important; color: var(--muted); }
 .leaflet-control-attribution a { color: var(--ink); }
 
+
+/* ---- hone2 r1: clearer people rows, one primary per state, plain stats ---- */
+.block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.block-head .title { margin: 0; }
+.block .label { margin: 0 0 10px; }
+.block-options .chips + .label { margin-top: 16px; }
+
+.person { grid-template-columns: 32px minmax(0, 1fr) 28px; align-items: center; row-gap: 10px; padding: 12px 0; }
+.person-place { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.person .mode { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 2px; border-radius: var(--radius); }
+.person .mode-btn { width: auto; height: 30px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 6px; font-size: 12.5px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+.person .mode-btn svg { width: 16px; height: 16px; flex: none; }
+.person .mode-btn:hover { color: var(--ink); background: var(--soft); }
+.person .mode-btn.is-on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(242, 178, 51, 0.55); }
+
+/* Use my location is the primary action only until there is a result; then Share is. */
+.btn-locate { background: transparent; color: var(--ink); border-color: #3a414a; }
+.btn-locate:hover { background: var(--soft); border-color: var(--ink); }
+html[data-result="false"] .btn-locate { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+html[data-result="false"] .btn-locate:hover { background: #ffc44f; }
+
+.detail-name { font-size: 24px; font-weight: 700; letter-spacing: -0.015em; }
+.detail-figure-num { font-size: 28px; }
+
+.results-hint { margin: -4px 0 12px; font-size: 12.5px; color: var(--muted); }
+.venue-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
+.venue-max { flex: none; font-size: 12.5px; color: var(--muted); }
+.venue-max b { font: 500 14px var(--mono); color: var(--ink); }
+.venue.is-selected .venue-max b { color: var(--accent); }
+.venue-also { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.strip { margin: 10px 0 2px; }
+.strip-axis { display: flex; justify-content: space-between; font: 500 10.5px var(--mono); color: #7d8792; margin-bottom: 6px; }
+.venue-stats { gap: 4px 14px; font-size: 12.5px; }
+
+.block-how { border-bottom: 0; }
+.how { margin: 0 0 12px; padding-left: 20px; color: var(--muted); font-size: 13px; }
+.how li { margin-bottom: 6px; padding-left: 2px; }
+.how li::marker { font: 500 12px var(--mono); color: var(--accent); }
+.privacy { margin: 0; padding-left: 10px; border-left: 2px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.foot { border-top: 1px solid var(--line); }
+
 @media (max-width: 1100px) {
   .console { grid-template-columns: 320px minmax(0, 1fr); grid-template-rows: 60px minmax(0, 1fr) auto; }
   .brand-sub { display: none; }
@@ -99,16 +141,23 @@ body { font: 14px/1.45 var(--sans); color: var(--ink); background: var(--bg); -w
   .col-right { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); max-height: 45vh; }
 }
 @media (max-width: 760px) {
+  /* Phone: one column in task order - add people, map, group, options, result, ranked list, how it works. */
   .console { display: flex; flex-direction: column; height: auto; }
   .toolbar { flex-wrap: wrap; padding: 10px 12px; gap: 8px; position: static; }
   .toolbar-add { order: 3; flex: 1 1 100%; flex-wrap: wrap; }
   .toolbar .search { flex: 1 1 100%; }
   .toolbar-add .btn { flex: 1; }
-  .toolbar > .btn-quiet { margin-left: auto; }
-  .col-map { height: 46vh; min-height: 300px; order: 1; }
-  .col-right { order: 2; max-height: none; overflow: visible; border-top: 1px solid var(--line); }
-  .col-left { order: 3; overflow: visible; border-right: 0; border-top: 1px solid var(--line); }
-  .block, .detail { padding: 14px 16px; }
+  .col-left, .col-right { display: contents; }
+  .col-map { height: 52vh; min-height: 320px; order: 1; }
+  .block, .detail, .status, .foot { background: var(--paper); }
+  .block-group { order: 2; border-top: 1px solid var(--line); }
+  .block-options { order: 3; }
+  .status { order: 4; }
+  .detail { order: 5; border-top: 1px solid var(--line); }
+  #results-wrap { order: 6; }
+  .block-how { order: 7; border-bottom: 1px solid var(--line); }
+  .foot { order: 8; margin-top: 0; }
+  .block, .detail { padding: 16px; }
 }
 @media (max-width: 359px) {
   /* The result card repeats the label; keep the map pin clean on the narrowest phones. */
