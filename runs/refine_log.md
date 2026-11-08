@@ -35,3 +35,16 @@ Keep rule: bots compare says "better" AND council pairwise is a B win.
 Stop: plateau (2 rounds without a kept gain). Result: r1 kept and promoted to index.html, style.css, src/app.js, src/base.css.
 Note: r3 had the highest council score but did not win pairwise against r1 and the bots did not rate it better, so it failed the keep rule. r3 files kept in runs/hone2/r3_files for reference.
 Final checks on r1: geo tests 21/21, demo renders 4 venue cards and 7 routes, no overflow or JS errors at 320/390/768/1024/1440, slop_check PASS (0 blockers, 0 warnings).
+
+## Hone 3 (venue facts, closes the "no venue info" gap)
+
+Goal: show the facts a group needs before committing to a place, from data the app already queries, without inventing anything.
+
+- Nominatim search now asks for `extratags`; only opening_hours, cuisine, website, takeaway, outdoor_seating and wheelchair are kept.
+- `G.openState()` parses common OSM opening_hours forms (24/7, day ranges and lists, split shifts, past-midnight spans, off, later rule overrides, comma-joined rules, "Mon"/"Sun" names). Anything else returns null and the raw text is shown.
+- Card: one line "Open now · until 22:00" / "Closed · opens tomorrow 08:00". Meet at panel: open state line + "Cuisine · Takeaway · Website".
+- Real data check (Batam cafes, live Nominatim): 30 results, 12 with tags, 5 with opening_hours; 2 of those 5 used the comma / "Mo- Sun" variants, now parsed.
+- Bug caught by tests: "javascript:" websites were being prefixed with https://; now any non-web scheme is dropped.
+- Layout fix after visual check: separator dots started wrapped lines; facts moved to plain inline text.
+
+Checks: geo tests 40/40, demo 4 venues / 7 routes, facts DOM test (injected hours) pass, no overflow or JS errors at 1440/390/320, slop_check PASS.
