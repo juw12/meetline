@@ -48,3 +48,21 @@ Goal: show the facts a group needs before committing to a place, from data the a
 - Layout fix after visual check: separator dots started wrapped lines; facts moved to plain inline text.
 
 Checks: geo tests 40/40, demo 4 venues / 7 routes, facts DOM test (injected hours) pass, no overflow or JS errors at 1440/390/320, slop_check PASS.
+
+## Hone 4 (UI polish: hierarchy, phone order, privacy copy)
+
+Keep rule: council pairwise is a B win AND the simulated-user bots rate it better than the baseline.
+Measurement note: the local proxy was down at the start, so the first two shoots (h4r0, h4r1) had blank map tiles and no web font. They were discarded. `tools/shoot.py` now uses the proxy only when it is listening, and every later shot was checked for tiles and fonts before judging.
+
+| round | change | council (3 judges) | pair vs baseline | bots (would use, mean) | kept? |
+|---|---|---|---|---|---|
+| h4b0 | baseline (Hone 3 live build) | 7.7 | - | 4/6, 5.83; resample 6/6, 6.17 | baseline |
+| h4r2 | Barlow Semi Condensed display face; Maps as text link; ghost toolbar once a result exists; phone shows result before the editor; 18 px initial dots; dim minor pins; "Midpoint only"; collapsible How it works; privacy copy + share-link note; placeholder/axis #7D8792 -> #9AA4AE | 7.8 | 0/1/2 (tie) | 6/6, 6.17, "better" | no (pair tie) |
+| h4r3 | r2 + "Fair zone" map label, How it works open on desktop, compact options | 8.0 | 0/2/1 (B win) | 3/6, 5.50, "not better" | no (bots) |
+| h4r4 | r3 + label hidden on phone, phone map 52vh, "First to last arrival" copy | 8.0 | 0/2/1 (B win) | 3/6, 5.67; resample 4/6, 5.50 | no (bots, confirmed by resample) |
+
+Stop: plateau (3 rounds without a kept gain).
+Final pick, stated plainly: no round met the strict keep rule. h4r2 is the only round not worse than the baseline on either signal (council +0.1 with a pairwise tie; bots 6.17 against baseline samples of 5.83 and 6.17), so h4r2 shipped. One copy fix from r4 was added on top because it corrects a factual contradiction, not a style choice: "Everyone arrives within 16 min" next to a 27 min longest trip now reads "First to last arrival: 16 min". r3/r4 files are kept in runs/hone4/r3files and runs/hone4/r4files.
+What the bots still ask for is outside a static UI: public transport, live location sharing, venue photos and ratings, a separate motorbike mode. Those need a routing or places backend.
+Final checks: run_tests ok (geo, demo 4 venues / 7 routes, facts), slop_check PASS (0 blockers, 0 warnings), no overflow at 320/390/1440, asset version 20261108c.
+Lesson: confirm map tiles and web fonts actually loaded in every screenshot before any judge sees it; a blank map scored like a design problem.
