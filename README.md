@@ -19,7 +19,7 @@ Add people by searching an address, using your current location, or tapping the 
 - **Real road times** from OSRM (car, bike and foot profiles). If the router is unreachable, Meetline falls back to straight-line estimates and says so.
 - **Arrival strip:** every ranked place shows one dot per person on a shared time axis, so you can see how balanced it is before reading any number.
 - **Venue facts from OpenStreetMap:** when a place has `opening_hours`, the card says "Open now · until 22:00" or "Closed · opens tomorrow 08:00" (your device's local time). The Meet at panel also shows cuisine, takeaway, outdoor seating, wheelchair access and a website link when those tags exist. Hours the parser does not understand are shown as written, never guessed.
-- **Share plan:** the whole plan (people, modes, place) is encoded in the link. Nothing is stored on a server.
+- **Share plan:** the whole plan (people, modes, place) is encoded in the link. Nothing is stored on a server. The link includes each person's start point, so send it to the group only, not a public post.
 - Drag any marker to move a person; results update.
 
 ## Run it locally
