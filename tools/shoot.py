@@ -18,7 +18,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
-PROXY_ARGS = ["--proxy-server=http://localhost:3128", "--proxy-bypass-list=127.0.0.1;localhost;<local>"]
+def _proxy_up(port=3128):
+    import socket
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=1.5):
+            return True
+    except OSError:
+        return False
+
+
+# Use the local proxy only when it is actually listening; otherwise tiles and fonts fail to load.
+PROXY_ARGS = (
+    ["--proxy-server=http://localhost:3128", "--proxy-bypass-list=127.0.0.1;localhost;<local>"]
+    if _proxy_up()
+    else []
+)
 HEIGHTS = {320: 700, 390: 844, 768: 1024, 1024: 768, 1280: 800, 1440: 900}
 
 
