@@ -96,6 +96,36 @@
   const est = G.estimateTrip({ lat: 0, lon: 0 }, { lat: 0.0899322, lon: 0 }, 'car');
   check('fallback estimate', near(est.duration / 60, 27, 0.2), (est.duration / 60).toFixed(2) + ' min');
 
+  // Opening hours (local time; 2026-11-04 is a Wednesday).
+  const at = (day, hour, minute) => new Date(2026, 10, day, hour, minute || 0);
+  const label = (hours, date) => {
+    const state = G.openState(hours, date);
+    return state ? state.label : null;
+  };
+  const weekly = 'Mo-Fr 08:00-22:00; Sa-Su 10:00-23:00';
+  check('hours 24/7', label('24/7', at(4, 3)) === 'Open 24 hours');
+  check('hours open weekday', label(weekly, at(4, 12)) === 'Open now · until 22:00', label(weekly, at(4, 12)));
+  check('hours closed late, opens tomorrow', label(weekly, at(4, 23)) === 'Closed · opens tomorrow 08:00', label(weekly, at(4, 23)));
+  check('hours closed before opening today', label(weekly, at(7, 9)) === 'Closed · opens 10:00', label(weekly, at(7, 9)));
+  check('hours past midnight from yesterday', label('Mo-Su 18:00-02:00', at(3, 1)) === 'Open now · until 02:00', label('Mo-Su 18:00-02:00', at(3, 1)));
+  check('hours split shift gap', label('Mo-Fr 09:00-12:00,13:00-17:00', at(4, 12, 30)) === 'Closed · opens 13:00');
+  check('hours weekend closed until Monday', label('Mo-Fr 09:00-17:00', at(7, 10)) === 'Closed · opens Mon 09:00', label('Mo-Fr 09:00-17:00', at(7, 10)));
+  check('hours later rule overrides', label('Mo-Su 09:00-21:00; Su off', at(8, 12)) === 'Closed · opens tomorrow 09:00', label('Mo-Su 09:00-21:00; Su off', at(8, 12)));
+  check('hours until midnight', label('Mo-Su 10:00-24:00', at(4, 20)) === 'Open now · until midnight', label('Mo-Su 10:00-24:00', at(4, 20)));
+  check('hours unsupported returns null', G.openState('PH off; sunrise-sunset', at(4, 12)) === null && G.openState('Mo-Fr', at(4, 12)) === null);
+  // Real tags seen in Batam OSM data.
+  const commaRules = 'Mo-Th 08:00-11:00, Fr-Su 08:00-12:00';
+  check('hours comma-separated rules', label(commaRules, at(7, 9)) === 'Open now · until 12:00', label(commaRules, at(7, 9)));
+  check('hours comma rules keep split days', label(commaRules, at(4, 11, 30)) === 'Closed · opens tomorrow 08:00', label(commaRules, at(4, 11, 30)));
+  check('hours loose spacing and long day names', label('Mo- Sun 10:00-21:00', at(4, 12)) === 'Open now · until 21:00', label('Mo- Sun 10:00-21:00', at(4, 12)));
+  check('hours split shift with comma still a shift', label('Mo-Fr 09:00-12:00, 13:00-17:00', at(4, 12, 30)) === 'Closed · opens 13:00');
+  check('hours day list with comma', label('Mo-Fr 08:00-17:00; Sa,Su 10:00-14:00', at(8, 11)) === 'Open now · until 14:00', label('Mo-Fr 08:00-17:00; Sa,Su 10:00-14:00', at(8, 11)));
+  const facts = G.venueFacts({ cuisine: 'coffee_shop;donut', takeaway: 'yes', website: 'example.com', opening_hours: 'Jan-Mar Mo 10:00-12:00' }, at(4, 12));
+  check('facts cuisine and extras', facts.cuisine === 'Coffee shop, donut' && facts.extras.join() === 'Takeaway', facts.cuisine);
+  check('facts website normalized', facts.website === 'https://example.com');
+  check('facts unparseable hours kept raw', facts.hours === null && facts.hoursText === 'Jan-Mar Mo 10:00-12:00');
+  check('facts reject unsafe website', G.venueFacts({ website: 'javascript:alert(1)' }).website === '');
+
   const failed = results.filter((r) => !r.pass);
   window.TEST_RESULTS = { total: results.length, failed: failed.length, results };
   document.getElementById('out').textContent = results.map((r) => (r.pass ? 'PASS ' : 'FAIL ') + r.name + (r.detail ? '  (' + r.detail + ')' : '')).join('\n');
