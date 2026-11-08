@@ -63,6 +63,7 @@ All text pairs pass AA (4.5:1); all but placeholder pass AAA for large text.
 - Travel mode is a labeled row under each person ("Car / moto", "Bike", "Walk"), not icons. The selected mode uses `--accent-soft` with amber text.
 - Option labels say what they do: "Place type", "Rank by". The group count reads "3 people · up to 8".
 - Venues within 60 m of each other merge into one card with a "Same block:" line, so the list does not repeat one building.
+- Venue facts come only from OSM tags. The open state sits on its own line (ink when open, muted when closed; no green/red, the accent stays reserved). Cuisine, extras and the website link follow as one plain muted line joined with " · ". Nothing renders when a venue has no tags.
 
 ## Signature: the arrival strip
 Each ranked place shows one dot per person on a shared time axis, with a bar from the shortest to the longest trip. You can see fairness (a short bar) before reading a number. The selected place gets an amber left rule and an amber rank badge; its pin on the map is the only amber pin.
