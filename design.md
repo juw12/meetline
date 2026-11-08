@@ -1,6 +1,6 @@
 # Meetline design system
 
-Direction: **dispatch console**. A dark, data-first map tool that reads like a ride-hail dispatch screen or a flight tracker: map in the centre, inputs on the left, the answer on the right. Chosen by council bracket (D beat B 2-0-1 in the final; see `runs/refine_log.md`).
+Direction: **dispatch console**. A dark, data-first map tool that reads like a ride-hail dispatch screen or a flight tracker: map in the centre, inputs on the left, the answer on the right. Chosen by council bracket (D beat B 2-0-1 in the final), then refined in Hone 2 (round 1 kept; see `runs/refine_log.md`).
 
 ## Facts the design serves
 - Job: 2 to 8 people find the place where nobody travels too long, then each person gets a road route.
@@ -27,6 +27,8 @@ Direction: **dispatch console**. A dark, data-first map tool that reads like a r
 | `--accent-ink` | `#15120A` | text on amber |
 | `--accent-soft` | `#2B2416` | amber tint for selected segments |
 
+The basemap is grayscale (inverted, desaturated tiles) so that only person colours and the amber meeting point carry colour on the map.
+
 One accent only. Person colours (`#4D9BFF`, `#FF8A3D`, `#4CC27A`, `#FF5C5C`, `#2FC6CF`, `#E8C547`, `#AEB6BF`, `#C98C5A`) identify people and routes and never style UI controls. No purple anywhere.
 
 ### Contrast (WCAG, measured)
@@ -52,16 +54,23 @@ All text pairs pass AA (4.5:1); all but placeholder pass AAA for large text.
 ## Layout
 - 1440: 330 px left (group + options) / map / 380 px right (result + ranked list), 60 px toolbar with search and actions.
 - 760-1100: two columns, results move under the map; the brand sub-label hides so the search keeps at least 200 px.
-- Phone (under 760): map 46vh first, then the result card, ranked places, then the group editor. Toolbar wraps: search full width, Locate and Pick buttons share one row.
+- Phone (under 760): toolbar, map, group editor, options (place type, rank by), status, result detail, ranked places, then How it works. The group comes first because adding people is the first job. Toolbar wraps: search full width, Locate and Pick buttons share one row.
 - Under 360 px the map pin label hides (the result card shows the same text).
 - Tap targets at least 40 px high; mode switch buttons 32 px inside a 40 px row.
+
+## Controls
+- One primary (amber) button per state: "Use my location" before there is a result, "Share this plan" after. The other one drops to a quiet button.
+- Travel mode is a labeled row under each person ("Car / moto", "Bike", "Walk"), not icons. The selected mode uses `--accent-soft` with amber text.
+- Option labels say what they do: "Place type", "Rank by". The group count reads "3 people · up to 8".
+- Venues within 60 m of each other merge into one card with a "Same block:" line, so the list does not repeat one building.
 
 ## Signature: the arrival strip
 Each ranked place shows one dot per person on a shared time axis, with a bar from the shortest to the longest trip. You can see fairness (a short bar) before reading a number. The selected place gets an amber left rule and an amber rank badge; its pin on the map is the only amber pin.
 
 ## Voice
 - Plain, short, practical. "Add a person: address or place", "Use my location", "Share this plan".
-- Numbers over adjectives: "27 min longest trip", not "Great spot".
+- Numbers over adjectives: "27 min longest", "Everyone arrives within 6 min", "58 min combined", not "Great spot".
+- The arrival strip has a labeled 0-30 min axis so the dots read without a legend.
 - Privacy stated once, quietly: "Locations stay in this browser and in links you share."
 
 ## Banned defaults
