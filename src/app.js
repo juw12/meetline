@@ -17,7 +17,10 @@
     bike: 'https://routing.openstreetmap.de/routed-bike',
     foot: 'https://routing.openstreetmap.de/routed-foot',
   };
-  const MODE_LABEL = { car: 'Drive', bike: 'Cycle', foot: 'Walk' };
+  const MODE_LABEL = { car: 'Car or motorbike', bike: 'Bicycle', foot: 'Walk' };
+  const MODE_SHORT = { car: 'Car / moto', bike: 'Bike', foot: 'Walk' };
+  // Venues closer than this to a better-ranked one are the same building or block: fold them into one card.
+  const SAME_PLACE_M = 60;
   const GMAPS_MODE = { car: 'driving', bike: 'bicycling', foot: 'walking' };
   const CATEGORIES = [
     { id: 'cafe', label: 'Cafe', query: 'cafe' },
@@ -709,16 +712,16 @@
       const item = el('li', 'person');
       item.dataset.id = p.id;
       item.style.setProperty('--c', colorFor(p));
-      const modes = ['car', 'bike', 'foot'].map((m) => `<button type="button" class="mode-btn${p.mode === m ? ' is-on' : ''}" data-mode="${m}" aria-pressed="${p.mode === m}" title="${MODE_LABEL[m]}">${ICON[m]}<span class="sr">${MODE_LABEL[m]}</span></button>`).join('');
+      const modes = ['car', 'bike', 'foot'].map((m) => `<button type="button" class="mode-btn${p.mode === m ? ' is-on' : ''}" data-mode="${m}" aria-pressed="${p.mode === m}" title="${MODE_LABEL[m]}">${ICON[m]}<span class="mode-text">${MODE_SHORT[m]}</span></button>`).join('');
       const live = p.isMe && watchId !== null ? '<span class="person-live">Live</span>' : '';
       item.innerHTML = `
         <span class="person-mark" aria-hidden="true">${esc((p.name || '?').trim().charAt(0).toUpperCase() || '?')}</span>
         <div class="person-main">
           <input class="person-name" value="${esc(p.name)}" maxlength="24" aria-label="Name" spellcheck="false">
-          <div class="person-place">${live}${esc(p.place || 'Finding address...')}</div>
+          <div class="person-place" title="${esc(p.place || '')}">${live}${esc(p.place || 'Finding address...')}</div>
         </div>
-        <div class="mode" role="group" aria-label="Travel mode for ${esc(p.name)}">${modes}</div>
-        <button type="button" class="icon-btn person-remove" aria-label="Remove ${esc(p.name)}">${ICON.close}</button>`;
+        <button type="button" class="icon-btn person-remove" aria-label="Remove ${esc(p.name)}">${ICON.close}</button>
+        <div class="mode" role="group" aria-label="How ${esc(p.name)} travels">${modes}</div>`;
       const nameInput = item.querySelector('.person-name');
       nameInput.addEventListener('change', () => {
         updatePerson(p.id, { name: nameInput.value.trim() || defaultName() }, false);
@@ -740,7 +743,7 @@
     });
     const count = $('#people-count');
     if (count) {
-      count.textContent = state.people.length ? `${state.people.length} of ${CFG.maxPeople} people` : '';
+      count.textContent = state.people.length ? `${state.people.length} ${state.people.length === 1 ? 'person' : 'people'} · up to ${CFG.maxPeople}` : `Up to ${CFG.maxPeople} people`;
     }
     const empty = $('#empty');
     if (empty) {
@@ -790,7 +793,7 @@
     }
   }
 
-  // Arrival strip: one tick per person on a shared time axis, so the spread is visible at a glance.
+  // Arrival strip: one dot per person on a shared minutes axis, so the spread is visible at a glance.
   function arrivalStrip(venue, scaleMax) {
     const ticks = state.people.map((p, i) => {
       const t = venue.times[i];
@@ -799,7 +802,22 @@
     }).join('');
     const minLeft = Math.min(100, (venue.min / scaleMax) * 100);
     const maxLeft = Math.min(100, (venue.max / scaleMax) * 100);
-    return `<div class="strip" aria-hidden="true"><span class="strip-span" style="left:${minLeft.toFixed(1)}%;width:${Math.max(0.5, maxLeft - minLeft).toFixed(1)}%"></span>${ticks}</div>`;
+    return `<div class="strip" aria-hidden="true"><span class="strip-span" style="left:${minLeft.toFixed(1)}%;width:${Math.max(0.5, maxLeft - minLeft).toFixed(1)}%"></span>${ticks}</div>`
+      + `<div class="strip-axis" aria-hidden="true"><span>0</span><span>${G.formatDuration(scaleMax)}</span></div>`;
+  }
+
+  // Group venues in the same building or block under the better-ranked one.
+  function displayVenues() {
+    const shown = [];
+    state.ranked.forEach((v) => {
+      const host = shown.find((s) => G.haversine(s.venue, v) < SAME_PLACE_M);
+      if (host) {
+        host.alsoHere.push(v);
+      } else {
+        shown.push({ venue: v, alsoHere: [] });
+      }
+    });
+    return shown;
   }
 
   function renderResults() {
@@ -816,22 +834,27 @@
     if (!state.ranked.length) {
       return;
     }
-    const scaleMax = Math.max(...state.ranked.map((v) => v.max)) * 1.05;
-    state.ranked.forEach((v, idx) => {
-      const item = el('li', 'venue' + (v.id === state.selectedId ? ' is-selected' : ''));
+    const scaleMax = Math.ceil((Math.max(...state.ranked.map((v) => v.max)) * 1.05) / 300) * 300;
+    displayVenues().forEach((group, idx) => {
+      const v = group.venue;
+      const selected = v.id === state.selectedId || group.alsoHere.some((o) => o.id === state.selectedId);
+      const item = el('li', 'venue' + (selected ? ' is-selected' : ''));
       item.dataset.id = v.id;
       const meta = [v.type, v.address].filter(Boolean).join(' · ');
+      const also = group.alsoHere.length
+        ? `<span class="venue-also">Same block: ${group.alsoHere.map((o) => esc(o.name)).join(', ')}</span>`
+        : '';
       item.innerHTML = `
-        <button type="button" class="venue-hit" aria-pressed="${v.id === state.selectedId}">
+        <button type="button" class="venue-hit" aria-pressed="${selected}">
           <span class="venue-rank">${idx + 1}</span>
           <span class="venue-body">
-            <span class="venue-name">${esc(v.name)}</span>
+            <span class="venue-top"><span class="venue-name">${esc(v.name)}</span><span class="venue-max"><b>${G.formatDuration(v.max)}</b> longest</span></span>
             <span class="venue-meta">${esc(meta)}</span>
+            ${also}
             ${arrivalStrip(v, scaleMax)}
             <span class="venue-stats">
-              <span class="stat stat-main"><b>${G.formatDuration(v.max)}</b> longest</span>
-              <span class="stat">${G.formatDuration(v.gap)} gap</span>
-              <span class="stat">${G.formatDuration(v.sum)} total</span>
+              <span class="stat">Everyone arrives within ${G.formatDuration(v.gap)}</span>
+              <span class="stat">${G.formatDuration(v.sum)} combined</span>
             </span>
           </span>
         </button>`;
@@ -841,9 +864,8 @@
     const label = $('#results-label');
     if (label) {
       const cat = CATEGORIES.find((c) => c.id === state.category);
-      label.textContent = state.objective === 'fair'
-        ? `Best ${cat.id === 'point' ? 'point' : cat.label.toLowerCase() + 's'}, ranked by the longest trip`
-        : `Best ${cat.id === 'point' ? 'point' : cat.label.toLowerCase() + 's'}, ranked by total travel time`;
+      const noun = cat.id === 'point' ? 'Best point' : `Top ${cat.label.toLowerCase()}s`;
+      label.textContent = state.objective === 'fair' ? `${noun}, shortest longest trip first` : `${noun}, least combined travel first`;
     }
   }
 
@@ -867,7 +889,7 @@
       const href = `https://www.google.com/maps/dir/?api=1&origin=${p.lat},${p.lon}&destination=${venue.lat},${venue.lon}&travelmode=${GMAPS_MODE[p.mode]}`;
       return `<li class="leg" style="--c:${colorFor(p)}">
           <span class="leg-mark" aria-hidden="true">${esc((p.name || '?').charAt(0).toUpperCase())}</span>
-          <span class="leg-who"><span class="leg-name">${esc(p.name)}</span><span class="leg-mode">${MODE_LABEL[p.mode]} · ${G.formatDistance(distance)}${approx}</span></span>
+          <span class="leg-who"><span class="leg-name">${esc(p.name)}</span><span class="leg-mode">${MODE_SHORT[p.mode]} · ${G.formatDistance(distance)}${approx}</span></span>
           <span class="leg-time">${G.formatDuration(duration)}</span>
           <a class="leg-go" href="${href}" target="_blank" rel="noopener" aria-label="Directions for ${esc(p.name)} in Google Maps">${ICON.arrow}<span>Route</span></a>
         </li>`;
@@ -940,10 +962,12 @@
 
   function renderMapVenues() {
     layers.venues.clearLayers();
-    state.ranked.forEach((v, idx) => {
-      const selected = v.id === state.selectedId;
+    displayVenues().forEach((group, idx) => {
+      const v = group.venue;
+      const selected = v.id === state.selectedId || group.alsoHere.some((o) => o.id === state.selectedId);
+      const shownVenue = selected ? (selectedVenue() || v) : v;
       const label = selected
-        ? `<div class="pin-label"><b>${esc(v.name)}</b><span>${G.formatDuration(v.max)} longest trip</span></div>`
+        ? `<div class="pin-label"><b>${esc(shownVenue.name)}</b><span>${G.formatDuration(shownVenue.max)} longest trip</span></div>`
         : '';
       const marker = L.marker([v.lat, v.lon], {
         icon: L.divIcon({
