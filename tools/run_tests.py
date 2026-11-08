@@ -32,6 +32,16 @@ def main():
     ok = True
     with sync_playwright() as playwright:
         browser = launch(playwright)
+        # CDN scripts go through a proxy; allow slow loads instead of failing on a busy machine.
+        browser_new_page = browser.new_page
+
+        def new_page(**kwargs):
+            created = browser_new_page(**kwargs)
+            created.set_default_navigation_timeout(90000)
+            created.set_default_timeout(90000)
+            return created
+
+        browser.new_page = new_page
 
         page = browser.new_page()
         errors = collect_errors(page)
@@ -70,6 +80,42 @@ def main():
         )
         report["demo"] = dict(demo, ready=ready, errors=errors)
         ok = ok and ready and demo["venues"] >= 3 and demo["routes"] >= 3 and not errors
+
+        # Venue facts: serve the snapshot with known OSM tags on the top venue, then read the UI.
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        errors = collect_errors(page)
+
+        snapshot_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src", "demo-snapshot.js")
+        with open(snapshot_file, encoding="utf-8") as handle:
+            patched_snapshot = handle.read().replace(
+                '"id":"node6871176666","name":"toko juice",',
+                '"id":"node6871176666","name":"toko juice","tags":{"opening_hours":"Mo-Su 00:00-24:00",'
+                '"cuisine":"juice","website":"example.com"},',
+            )
+
+        def patch_snapshot(route):
+            route.fulfill(status=200, content_type="application/javascript", body=patched_snapshot)
+
+        page.route("**/demo-snapshot.js*", patch_snapshot)
+        page.goto(base + "/index.html?demo", wait_until="domcontentloaded")
+        facts_ready = wait_ready(page, 45)
+        facts = page.evaluate(
+            "({card: (document.querySelector('#results .venue-hours') || {}).textContent || '',"
+            " detail: ((document.querySelector('#detail .detail-hours') || {}).textContent || '') + ' | ' + ((document.querySelector('#detail .detail-facts') || {}).textContent || ''),"
+            " link: (document.querySelector('#detail .fact-link') || {}).href || ''})"
+        )
+        starbucks = page.evaluate(
+            "(() => { const hit = Array.from(document.querySelectorAll('#results .venue'))"
+            ".find(li => li.textContent.includes('Starbucks'));"
+            " if (!hit) { return ''; } hit.querySelector('.venue-hit').click();"
+            " return (document.querySelector('#detail .detail-facts') || {}).textContent || ''; })()"
+        )
+        report["facts"] = dict(facts, starbucks=starbucks, ready=facts_ready, errors=errors)
+        ok = ok and facts_ready and not errors
+        ok = ok and facts["card"] == "Open 24 hours"
+        ok = ok and "Open 24 hours" in facts["detail"] and "Juice" in facts["detail"]
+        ok = ok and facts["link"].startswith("https://example.com")
+        ok = ok and "Coffee shop" in starbucks and "Takeaway" in starbucks
 
         if live:
             page = browser.new_page(viewport={"width": 1440, "height": 900})
