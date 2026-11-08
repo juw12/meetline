@@ -40,7 +40,7 @@ body { font: 14px/1.45 var(--sans); color: var(--ink); background: var(--bg); -w
 .label { color: var(--muted); }
 .count { color: var(--muted); }
 .search input { background: var(--bg); border-color: var(--line); color: var(--ink); height: 40px; }
-.search input::placeholder { color: #7d8792; }
+.search input::placeholder { color: #9aa4ae; }
 .suggest { background: var(--paper); border-color: var(--line); }
 .suggest-item.is-active, .suggest-item:hover { background: var(--soft); }
 .btn-primary:hover { background: #ffc44f; }
@@ -131,7 +131,7 @@ html[data-result="false"] .btn-locate:hover { background: #ffc44f; }
 .detail-facts .fact-link { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
 .detail-facts .fact-link:hover { color: var(--accent); }
 .strip { margin: 10px 0 2px; }
-.strip-axis { display: flex; justify-content: space-between; font: 500 10.5px var(--mono); color: #7d8792; margin-bottom: 6px; }
+.strip-axis { display: flex; justify-content: space-between; font: 500 10.5px var(--mono); color: #9aa4ae; margin-bottom: 6px; }
 .venue-stats { gap: 4px 14px; font-size: 12.5px; }
 
 .block-how { border-bottom: 0; }
@@ -170,3 +170,74 @@ html[data-result="false"] .btn-locate:hover { background: #ffc44f; }
   /* The result card repeats the label; keep the map pin clean on the narrowest phones. */
   .pin-label { display: none; }
 }
+
+/* ---- hone4 r1: one accent action, type roles, calmer phone ---- */
+:root { --display: "Barlow Semi Condensed", "Manrope", system-ui, sans-serif; }
+
+/* Type roles: condensed display for names and headings, mono for labels and figures, Manrope for reading. */
+.brand-name { font: 600 20px/1 var(--display); letter-spacing: 0.01em; }
+.detail-name { font: 600 30px/1.05 var(--display); letter-spacing: 0; }
+.venue-name { font: 600 17px/1.2 var(--display); letter-spacing: 0.005em; }
+.person-name { font-family: var(--display); font-size: 16px; font-weight: 600; }
+.title, .label, .detail-kicker { font: 500 11.5px/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.detail-kicker { color: var(--accent); }
+
+/* Amber marks only the meeting point, the winning number and the one primary action. */
+.leg-go { color: var(--muted); }
+.leg-go:hover { color: var(--ink); background: var(--soft); }
+.detail-actions { align-items: center; gap: 16px; }
+.text-link { color: var(--ink); font-weight: 500; text-decoration: underline; text-decoration-color: #4a525c; text-underline-offset: 3px; }
+.text-link:hover { text-decoration-color: var(--ink); }
+.text-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* After a result exists, adding people is secondary: ghost buttons, no borders. */
+html[data-result="true"] .toolbar-add .btn { border-color: transparent; background: transparent; color: var(--muted); }
+html[data-result="true"] .toolbar-add .btn:hover { color: var(--ink); background: var(--soft); }
+
+@media (max-width: 760px) {
+  /* The result card directly below the map names the place; the pin label only collided with routes. */
+  .pin-label { display: none; }
+  body { font-size: 15px; }
+  .person .mode-btn { height: 40px; font-size: 13.5px; }
+  .chip, .seg { min-height: 40px; }
+  .venue-hit { padding: 14px; }
+  .detail-name { font-size: 28px; }
+}
+
+/* hone4 r1b: labelled arrival dots, answer-first phone order once a result exists */
+.strip { height: 20px; }
+.strip-span { bottom: 8px; }
+.tick {
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  font: 700 10px/1 var(--mono);
+  color: #14171b;
+  border-width: 2px;
+}
+@media (max-width: 760px) {
+  html[data-result="true"] .status { order: 2; }
+  html[data-result="true"] .detail { order: 3; border-top: 1px solid var(--line); }
+  html[data-result="true"] .block-group { order: 4; }
+  html[data-result="true"] .block-options { order: 5; }
+  html[data-result="true"] #results-wrap { order: 6; }
+}
+
+/* hone4 r2: quieter minor pins, winner ring, collapsible help, phone dock */
+.pin-venue.is-minor { width: 22px; height: 22px; border-width: 1.5px; border-color: #8a939d; background: #1f242b; opacity: 0.9; }
+.pin-venue.is-minor span { font-size: 10px; color: #c9cfd6; }
+.pin-venue.is-selected { box-shadow: 0 0 0 6px rgba(242, 178, 51, 0.22), 0 2px 6px rgba(0, 0, 0, 0.5); }
+.block-how summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 32px; }
+.block-how summary::-webkit-details-marker { display: none; }
+.block-how summary::after { content: "+"; font: 500 14px var(--mono); color: var(--muted); }
+.block-how[open] summary::after { content: "\2212"; }
+.block-how[open] summary { margin-bottom: 8px; }
+.block-how summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 760px) {
+  /* With an answer, a shorter map lets the result and Share fit in the first screen. */
+  html[data-result="true"] .col-map { height: 44vh; min-height: 300px; }
+}
+.share-note { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
