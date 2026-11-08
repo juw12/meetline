@@ -27,7 +27,7 @@
     { id: 'restaurant', label: 'Restaurant', query: 'restaurant' },
     { id: 'mall', label: 'Mall', query: 'mall' },
     { id: 'park', label: 'Park', query: 'park' },
-    { id: 'point', label: 'Exact point', query: null },
+    { id: 'point', label: 'Midpoint only', query: null },
   ];
   const OBJECTIVES = [
     { id: 'fair', label: 'Fairest', hint: 'Shortest longest trip' },
@@ -609,7 +609,7 @@
       name: state.objective === 'fair' ? 'Fairest exact point' : 'Most central point',
       lat: center.lat,
       lon: center.lon,
-      type: 'Exact point',
+      type: 'Midpoint',
       address: '',
       order: 999,
       isPoint: true,
@@ -814,7 +814,7 @@
     const ticks = state.people.map((p, i) => {
       const t = venue.times[i];
       const left = Math.min(100, (t / scaleMax) * 100);
-      return `<span class="tick" style="left:${left.toFixed(1)}%;--c:${colorFor(p)}" title="${esc(p.name)}: ${G.formatDuration(t)}"></span>`;
+      return `<span class="tick" style="left:${left.toFixed(1)}%;--c:${colorFor(p)}" title="${esc(p.name)}: ${G.formatDuration(t)}">${esc((p.name || '?').trim().charAt(0).toUpperCase() || '?')}</span>`;
     }).join('');
     const minLeft = Math.min(100, (venue.min / scaleMax) * 100);
     const maxLeft = Math.min(100, (venue.max / scaleMax) * 100);
@@ -874,7 +874,7 @@
             ${also}
             ${arrivalStrip(v, scaleMax)}
             <span class="venue-stats">
-              <span class="stat">Everyone arrives within ${G.formatDuration(v.gap)}</span>
+              <span class="stat">First to last arrival: ${G.formatDuration(v.gap)}</span>
               <span class="stat">${G.formatDuration(v.sum)} combined</span>
             </span>
           </span>
@@ -942,8 +942,9 @@
       <ol class="legs">${rows}</ol>
       <div class="detail-actions">
         <button type="button" class="btn btn-primary" data-action="share">Share this plan</button>
-        <a class="btn btn-quiet" href="${where}" target="_blank" rel="noopener">Open in Google Maps</a>
-      </div>`;
+        <a class="text-link" href="${where}" target="_blank" rel="noopener">Open in Google Maps</a>
+      </div>
+      <p class="share-note">The link includes each person's start point. Send it to your group only.</p>`;
     box.querySelector('[data-action="share"]').addEventListener('click', sharePlan);
   }
 
@@ -1007,9 +1008,9 @@
       const marker = L.marker([v.lat, v.lon], {
         icon: L.divIcon({
           className: 'pin-wrap',
-          html: `<div class="pin-venue-wrap"><div class="pin-venue${selected ? ' is-selected' : ''}"><span>${idx + 1}</span></div>${label}</div>`,
-          iconSize: selected ? [40, 40] : [28, 28],
-          iconAnchor: selected ? [20, 40] : [14, 28],
+          html: `<div class="pin-venue-wrap"><div class="pin-venue${selected ? ' is-selected' : ' is-minor'}"><span>${idx + 1}</span></div>${label}</div>`,
+          iconSize: selected ? [40, 40] : [22, 22],
+          iconAnchor: selected ? [20, 40] : [11, 22],
         }),
         title: v.name,
         zIndexOffset: selected ? 1000 : 100,
