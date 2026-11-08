@@ -1,9 +1,10 @@
 """Check that the Meetline live surfaces respond and mention the project."""
+import os
 import sys
 import time
 import urllib.request
 
-PROXY = "http://localhost:3128"
+PROXY = os.environ.get("HTTPS_PROXY", "http://localhost:3128")
 URLS = [
     "https://juw12.github.io/meetline/",
     "https://juw12.github.io/p/meetline/",
