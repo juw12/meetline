@@ -23,27 +23,35 @@
           <input id="search-input" type="search" placeholder="Add a person: address or place" autocomplete="off" role="combobox" aria-controls="search-suggest" aria-expanded="false">
           <ul id="search-suggest" class="suggest" role="listbox" hidden></ul>
         </div>
-      <button id="btn-locate" type="button" class="btn btn-primary"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Use my location</button>
+      <button id="btn-locate" type="button" class="btn btn-locate"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Use my location</button>
           <button id="btn-pick" type="button" class="btn btn-quiet" aria-pressed="false">Pick on map</button>
     </div>
-    <button type="button" class="btn btn-quiet" data-action="share-top">Share plan</button>
   </header>
   <aside id="panel" class="col col-left" aria-label="People and options">
-    <section class="block">
-      <h1 class="title">Group</h1>
-      <div class="block-head"><h2 class="label">People</h2><span id="people-count" class="count"></span></div>
-        <ul id="people" class="people"></ul>
-        <div id="empty" class="empty">
-          <p id="empty-need" class="empty-need">Add at least two people.</p>
-          <p class="empty-hint">Right-click or long-press the map to drop someone there. <button type="button" class="link" data-action="demo">Try a sample group in Batam</button></p>
-        </div>
+    <section class="block block-group">
+      <div class="block-head"><h1 class="title">Group</h1><span id="people-count" class="count"></span></div>
+      <ul id="people" class="people"></ul>
+      <div id="empty" class="empty">
+        <p id="empty-need" class="empty-need">Add at least two people.</p>
+        <p class="empty-hint">Search an address above, use your location, or right-click / long-press the map. <button type="button" class="link" data-action="demo">Try a sample group in Batam</button></p>
+      </div>
     </section>
-    <section class="block">
-      <h2 class="label">Meet at</h2>
-        <div id="categories" class="chips" role="group" aria-label="Place type"></div>
-        <div id="objective" class="segs" role="group" aria-label="Ranking"></div>
+    <section class="block block-options">
+      <h2 class="label">Place type</h2>
+      <div id="categories" class="chips" role="group" aria-label="Place type"></div>
+      <h2 class="label">Rank by</h2>
+      <div id="objective" class="segs" role="group" aria-label="Rank by"></div>
     </section>
-    <footer class="foot">Locations stay in this browser and in links you share. Maps and routes from OpenStreetMap.</footer>
+    <section class="block block-how" aria-label="How it works">
+      <h2 class="label">How it works</h2>
+      <ol class="how">
+        <li>Add where each person starts and how they travel.</li>
+        <li>Meetline looks for places around the fairest middle point, the dashed ring on the map.</li>
+        <li>Places are ranked by real road times, so no one travels much longer than the rest.</li>
+      </ol>
+      <p class="privacy">No account and no server. Locations stay in this browser. A shared link contains each person's map point, so send it only to the group; anyone who opens it can add themselves and send it back.</p>
+    </section>
+    <footer class="foot">Maps, places and routes from OpenStreetMap. Driving, cycling and walking only; no public transport.</footer>
   </aside>
   <main class="col-map"><div id="map" aria-label="Map"></div></main>
   <aside class="col col-right" aria-label="Results">
@@ -51,6 +59,7 @@
     <section id="detail" class="detail" hidden></section>
     <section id="results-wrap" class="block" hidden>
         <h2 id="results-label" class="label">Ranked</h2>
+        <p class="results-hint">Each dot is one person's trip time, on the same scale for every place.</p>
         <ol id="results" class="results"></ol>
       </section>
   </aside>
