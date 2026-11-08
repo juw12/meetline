@@ -18,6 +18,7 @@ Add people by searching an address, using your current location, or tapping the 
   - *Least total* minimises the sum of all trips (geometric median). Good for fuel or overall time.
 - **Real road times** from OSRM (car, bike and foot profiles). If the router is unreachable, Meetline falls back to straight-line estimates and says so.
 - **Arrival strip:** every ranked place shows one dot per person on a shared time axis, so you can see how balanced it is before reading any number.
+- **Venue facts from OpenStreetMap:** when a place has `opening_hours`, the card says "Open now · until 22:00" or "Closed · opens tomorrow 08:00" (your device's local time). The Meet at panel also shows cuisine, takeaway, outdoor seating, wheelchair access and a website link when those tags exist. Hours the parser does not understand are shown as written, never guessed.
 - **Share plan:** the whole plan (people, modes, place) is encoded in the link. Nothing is stored on a server.
 - Drag any marker to move a person; results update.
 
@@ -46,6 +47,7 @@ No build step and no API keys. Leaflet 1.9.4 is vendored in `vendor/leaflet`.
 - Map tiles: OpenStreetMap. Search: Photon (komoot) and Nominatim. Routing: OSRM via routing.openstreetmap.de. All free community services with fair-use limits; this app makes a handful of requests per search. For heavy use, point `window.MEETLINE_CONFIG` at your own tile, search and routing servers.
 - No public transport routing.
 - No live location sharing between phones: each person's position is entered on one device, or sent around with the share link.
+- Venue details are only as good as OpenStreetMap: many places have no hours or cuisine tags, and there are no photos or ratings. Public holidays, seasonal hours and sunrise/sunset rules are not evaluated (shown as raw text).
 - Venue coverage depends on OpenStreetMap data in your area.
 
 ## Project layout
