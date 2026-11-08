@@ -8,10 +8,10 @@
 <meta name="description" content="Add two or more people, see the place where nobody travels too long, and the road route for each person.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600&family=JetBrains+Mono:wght@500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./src/base.css?v=20261108b">
-<link rel="stylesheet" href="style.css?v=20261108b">
+<link rel="stylesheet" href="./src/base.css?v=20261108c">
+<link rel="stylesheet" href="style.css?v=20261108c">
 </head>
 <body class="app">
 <div class="console">
@@ -42,15 +42,15 @@
       <h2 class="label">Rank by</h2>
       <div id="objective" class="segs" role="group" aria-label="Rank by"></div>
     </section>
-    <section class="block block-how" aria-label="How it works">
-      <h2 class="label">How it works</h2>
+    <details class="block block-how">
+      <summary class="label">How it works</summary>
       <ol class="how">
         <li>Add where each person starts and how they travel.</li>
         <li>Meetline looks for places around the fairest middle point, the dashed ring on the map.</li>
         <li>Places are ranked by real road times, so no one travels much longer than the rest.</li>
       </ol>
-      <p class="privacy">No account and no server. Locations stay in this browser. A shared link contains each person's map point, so send it only to the group; anyone who opens it can add themselves and send it back.</p>
-    </section>
+      <p class="privacy">Nothing to sign up for. Your group list is saved only on this device. The share link includes where each person starts, so send it to your group chat, not a public post.</p>
+    </details>
     <footer class="foot">Maps, places and routes from OpenStreetMap. Driving, cycling and walking only; no public transport.</footer>
   </aside>
   <main class="col-map"><div id="map" aria-label="Map"></div></main>
@@ -66,11 +66,11 @@
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <script src="./vendor/leaflet/leaflet.js"></script>
-<script src="./src/geo.js?v=20261108b"></script>
-<script src="./src/demo-snapshot.js?v=20261108b"></script>
+<script src="./src/geo.js?v=20261108c"></script>
+<script src="./src/demo-snapshot.js?v=20261108c"></script>
 <script>
 window.MEETLINE_CONFIG = { colors: ['#4D9BFF', '#FF8A3D', '#4CC27A', '#FF5C5C', '#2FC6CF', '#E8C547', '#AEB6BF', '#C98C5A'] };
 </script>
-<script src="./src/app.js?v=20261108b"></script>
+<script src="./src/app.js?v=20261108c"></script>
 </body>
 </html>
