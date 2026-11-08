@@ -35,12 +35,13 @@ One accent only. Person colours (`#4D9BFF`, `#FF8A3D`, `#4CC27A`, `#FF5C5C`, `#2
 - ink on paper 14.48:1, ink on bg 15.69:1
 - muted on paper 6.75:1, muted on soft 6.03:1
 - accent on paper 9.31:1, accent-ink on accent 9.97:1
-- placeholder `#7D8792` on bg 5.19:1
+- placeholder and strip axis `#9AA4AE` on bg 7.48:1, on paper 6.90:1 (raised from `#7D8792` in Hone 4)
 - error `#FFB4B4` on `#3A1C1C` 9.13:1
-All text pairs pass AA (4.5:1); all but placeholder pass AAA for large text.
+All text pairs pass AA (4.5:1).
 
 ## Type
-- **Manrope** (400/500/600/700) for interface text and names.
+- **Barlow Semi Condensed** (600) as `--display`: brand name, the Meet at venue name, ranked venue names and person names. Nothing else.
+- **Manrope** (400/500/600/700) for all other interface text.
 - **JetBrains Mono** (500) for every figure: minutes, counts, rank numbers, the brand sub-label.
 - Scale: 11 (mono labels) / 12 / 13 / 14 body / 17 brand / 22-26 result figure.
 - Labels: 13 px, 600, uppercase, 0.08em tracking, muted.
