@@ -169,7 +169,7 @@
     const viewbox = [box.west, box.north, box.east, box.south].map((n) => n.toFixed(5)).join(',');
     let venues = [];
     try {
-      const rows = await nominatim(`search?format=jsonv2&addressdetails=1&limit=30&bounded=1&q=${encodeURIComponent(category.query)}&viewbox=${viewbox}`);
+      const rows = await nominatim(`search?format=jsonv2&addressdetails=1&extratags=1&limit=30&bounded=1&q=${encodeURIComponent(category.query)}&viewbox=${viewbox}`);
       venues = rows.filter((r) => r.name).map((r) => ({
         id: r.osm_type + r.osm_id,
         name: r.name,
@@ -177,6 +177,7 @@
         lon: Number(r.lon),
         type: category.label,
         address: shortAddress(r.address, ''),
+        tags: pickTags(r.extratags),
       }));
     } catch (error) {
       venues = [];
@@ -201,6 +202,21 @@
     const kept = G.dedupeVenues(venues, center, 14);
     venueCache.set(key, kept);
     return kept;
+  }
+
+  // Keep only the OSM tags the UI shows, so snapshots and memory stay small.
+  const SHOWN_TAGS = ['opening_hours', 'cuisine', 'website', 'contact:website', 'takeaway', 'outdoor_seating', 'wheelchair'];
+
+  function pickTags(extratags) {
+    const tags = {};
+    if (extratags) {
+      SHOWN_TAGS.forEach((key) => {
+        if (extratags[key]) {
+          tags[key] = String(extratags[key]).slice(0, 200);
+        }
+      });
+    }
+    return tags;
   }
 
   // Durations/distances matrix [person][candidate]. One table request per travel mode.
@@ -844,12 +860,17 @@
       const also = group.alsoHere.length
         ? `<span class="venue-also">Same block: ${group.alsoHere.map((o) => esc(o.name)).join(', ')}</span>`
         : '';
+      const hours = G.venueFacts(v.tags).hours;
+      const hoursLine = hours
+        ? `<span class="venue-hours${hours.open ? ' is-open' : ''}">${esc(hours.label)}</span>`
+        : '';
       item.innerHTML = `
         <button type="button" class="venue-hit" aria-pressed="${selected}">
           <span class="venue-rank">${idx + 1}</span>
           <span class="venue-body">
             <span class="venue-top"><span class="venue-name">${esc(v.name)}</span><span class="venue-max"><b>${G.formatDuration(v.max)}</b> longest</span></span>
             <span class="venue-meta">${esc(meta)}</span>
+            ${hoursLine}
             ${also}
             ${arrivalStrip(v, scaleMax)}
             <span class="venue-stats">
@@ -895,12 +916,26 @@
         </li>`;
     }).join('');
     const where = `https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lon}`;
+    // Venue facts from OSM tags: open state on its own line, the rest as one plain line.
+    const facts = G.venueFacts(venue.tags);
+    let hoursLine = '';
+    if (facts.hours) {
+      hoursLine = `<p class="detail-hours${facts.hours.open ? ' is-open' : ''}">${esc(facts.hours.label)}</p>`;
+    } else if (facts.hoursText) {
+      hoursLine = `<p class="detail-hours">Hours: ${esc(facts.hoursText)}</p>`;
+    }
+    const factParts = [facts.cuisine, ...facts.extras].filter(Boolean).map(esc);
+    if (facts.website) {
+      factParts.push(`<a class="fact-link" href="${esc(facts.website)}" target="_blank" rel="noopener">Website</a>`);
+    }
+    const factsLine = hoursLine + (factParts.length ? `<p class="detail-facts">${factParts.join(' · ')}</p>` : '');
     box.innerHTML = `
       <div class="detail-head">
         <div>
           <p class="detail-kicker">Meet at</p>
           <h2 class="detail-name">${esc(venue.name)}</h2>
           <p class="detail-meta">${esc([venue.type, venue.address].filter(Boolean).join(' · '))}</p>
+          ${factsLine}
         </div>
         <div class="detail-figure"><span class="detail-figure-num">${G.formatDuration(venue.max)}</span><span class="detail-figure-label">longest trip</span></div>
       </div>
