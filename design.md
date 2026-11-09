@@ -95,3 +95,12 @@ Each ranked place shows one dot per person on a shared time axis, with a bar fro
 - `index.html`, `style.css`: this direction (tokens, layout, overrides).
 - `src/base.css`: shared components (people rows, chips, results, legs, pins).
 - `directions/A-D`: the four bracket directions, kept for reference.
+
+
+## Hone 6: live group, transit, photos
+- Live group sits in its own block below Place type / Rank by (bots read it as intrusive inside the Group block), labelled OPTIONAL, as one quiet row (broadcast icon in amber, "Start" ghost button). It expands in place into a name field + primary "Share my location", then collapses to a status row: green dot (pulsing only when connected and motion is allowed), "Live group · N sharing", Invite, Leave. Amber dot = connecting or retrying. No modal, no new colour family.
+- People rows: live members carry the existing mono uppercase badge ("LIVE · NOW", "SEEN 12 MIN AGO" in muted grey once stale past 10 min).
+- Travel modes are four segments (Car / moto, Bike, Walk, Transit) on weighted columns so the longest label fits the 330 px panel.
+- Transit legs replace "mode · distance" with the line summary ("Bus 105 · 9 min walk"). The old per-row Bus/train link is gone (bots found it ambiguous); Transit is a real mode now.
+- "Open in Google Maps" now opens the place page (name searched at the venue's position) with photos, reviews and traffic; the midpoint keeps the coordinate link. The Leave-by caption states that road times exclude traffic.
+- When the page is opened from an invite or a group is running, the live block moves to the top of the panel (flex order) so the join form is the first thing seen.
