@@ -462,8 +462,21 @@
         hideSuggestions();
       }
     });
+    // Visible Add button: same as pressing Enter, so no one has to guess the keyboard shortcut.
+    const addButton = $('#btn-add');
+    if (addButton) {
+      addButton.addEventListener('click', () => {
+        if (suggestions.length) {
+          chooseSuggestion(suggestions[Math.max(0, activeSuggestion)]);
+        } else if (input.value.trim().length >= 3) {
+          loadSuggestions(input.value.trim(), true);
+        } else {
+          input.focus();
+        }
+      });
+    }
     document.addEventListener('click', (event) => {
-      if (!list.contains(event.target) && event.target !== input) {
+      if (!list.contains(event.target) && event.target !== input && event.target !== addButton) {
         hideSuggestions();
       }
     });
@@ -902,20 +915,42 @@
       return;
     }
     box.hidden = false;
+    const legTimes = state.people.map((p, i) => {
+      const route = state.routes[p.id];
+      return route ? route.duration : venue.times[i];
+    });
+    const slowest = Math.max(...legTimes);
     const rows = state.people.map((p, i) => {
       const route = state.routes[p.id];
-      const duration = route ? route.duration : venue.times[i];
+      const duration = legTimes[i];
+      const barShare = slowest > 0 ? Math.max(4, Math.round((duration / slowest) * 100)) : 100;
       const distance = route ? route.distance : venue.dists[i];
       const approx = route && route.estimated ? ' approx.' : '';
       const href = `https://www.google.com/maps/dir/?api=1&origin=${p.lat},${p.lon}&destination=${venue.lat},${venue.lon}&travelmode=${GMAPS_MODE[p.mode]}`;
+      const transitHref = `https://www.google.com/maps/dir/?api=1&origin=${p.lat},${p.lon}&destination=${venue.lat},${venue.lon}&travelmode=transit`;
       return `<li class="leg" style="--c:${colorFor(p)}">
           <span class="leg-mark" aria-hidden="true">${esc((p.name || '?').charAt(0).toUpperCase())}</span>
-          <span class="leg-who"><span class="leg-name">${esc(p.name)}</span><span class="leg-mode">${MODE_SHORT[p.mode]} · ${G.formatDistance(distance)}${approx}</span></span>
+          <span class="leg-who"><span class="leg-name">${esc(p.name)}</span><span class="leg-mode"><span>${MODE_SHORT[p.mode]} · ${G.formatDistance(distance)}${approx}</span><a class="leg-transit" href="${transitHref}" target="_blank" rel="noopener" aria-label="Bus or train directions for ${esc(p.name)} in Google Maps">Bus/train</a></span></span>
           <span class="leg-time">${G.formatDuration(duration)}</span>
           <a class="leg-go" href="${href}" target="_blank" rel="noopener" aria-label="Directions for ${esc(p.name)} in Google Maps">${ICON.arrow}<span>Route</span></a>
+          <span class="leg-bar" aria-hidden="true"><i style="width:${barShare}%"></i></span>
         </li>`;
     }).join('');
     const where = `https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lon}`;
+    // Arrive together: pick a meeting time; each person's leave time is that time minus their trip.
+    let departureLine = '';
+    if (state.people.length >= 2) {
+      const meetMinutes = meetTimeMinutes(slowest);
+      const steps = state.people
+        .map((p, i) => ({ name: p.name, leave: meetMinutes - Math.round(legTimes[i] / 60) }))
+        .sort((a, b) => a.leave - b.leave)
+        .map((o) => `<span class="depart-step"><b>${esc(o.name)}</b> ${localClock(o.leave)}</span>`)
+        .join('');
+      departureLine = `<div class="depart-line">
+          <label class="depart-label" for="meet-time">Meet at <input id="meet-time" class="depart-time" type="time" value="${clockText(meetMinutes)}" step="300"></label>
+          <span class="depart-caption">Leave by</span>${steps}
+        </div>`;
+    }
     // Venue facts from OSM tags: open state on its own line, the rest as one plain line.
     const facts = G.venueFacts(venue.tags);
     let hoursLine = '';
@@ -940,12 +975,46 @@
         <div class="detail-figure"><span class="detail-figure-num">${G.formatDuration(venue.max)}</span><span class="detail-figure-label">longest trip</span></div>
       </div>
       <ol class="legs">${rows}</ol>
+      ${departureLine}
       <div class="detail-actions">
         <button type="button" class="btn btn-primary" data-action="share">Share this plan</button>
         <a class="text-link" href="${where}" target="_blank" rel="noopener">Open in Google Maps</a>
       </div>
-      <p class="share-note">The link includes each person's start point. Send it to your group only.</p>`;
+      <p class="share-note">The link includes each person's start point, so send it to your group only. Nothing is saved on a server.</p>`;
     box.querySelector('[data-action="share"]').addEventListener('click', sharePlan);
+    const meetInput = box.querySelector('#meet-time');
+    if (meetInput) {
+      meetInput.addEventListener('change', () => {
+        state.meetTime = meetInput.value || null;
+        renderDetail();
+      });
+    }
+  }
+
+  // Meeting time in minutes after midnight: the user's choice, or the next quarter hour
+  // that leaves the slowest person their whole trip plus ten minutes to get going.
+  function meetTimeMinutes(slowestSeconds) {
+    if (state.meetTime && /^\d{2}:\d{2}$/.test(state.meetTime)) {
+      const [hours, minutes] = state.meetTime.split(':').map(Number);
+      return hours * 60 + minutes;
+    }
+    const now = new Date();
+    const earliest = now.getHours() * 60 + now.getMinutes() + Math.round(slowestSeconds / 60) + 10;
+    return Math.ceil(earliest / 15) * 15;
+  }
+
+  // Same clock style as the browser's time picker (12 h or 24 h, from the user's locale).
+  function localClock(totalMinutes) {
+    const dayMinutes = ((Math.round(totalMinutes) % 1440) + 1440) % 1440;
+    const date = new Date(2000, 0, 1, Math.floor(dayMinutes / 60), dayMinutes % 60);
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function clockText(totalMinutes) {
+    const dayMinutes = ((Math.round(totalMinutes) % 1440) + 1440) % 1440;
+    const hours = String(Math.floor(dayMinutes / 60)).padStart(2, '0');
+    const minutes = String(dayMinutes % 60).padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
 
   /* ---------- rendering: map ---------- */
@@ -988,6 +1057,13 @@
       radius: state.radius,
       className: 'search-ring',
       interactive: false,
+    }).addTo(layers.center);
+    // Label the dashed ring so its meaning is explicit (hidden on narrow screens by CSS).
+    const ringTopLat = state.center.lat + state.radius / 111320;
+    L.marker([ringTopLat, state.center.lon], {
+      icon: L.divIcon({ className: 'ring-label-wrap', html: '<span class="ring-label">Fair zone · similar trip times</span>', iconSize: [220, 18], iconAnchor: [110, 9] }),
+      interactive: false,
+      keyboard: false,
     }).addTo(layers.center);
     L.marker([state.center.lat, state.center.lon], {
       icon: L.divIcon({ className: 'pin-wrap', html: '<div class="pin-center"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
