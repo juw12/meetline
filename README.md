@@ -10,13 +10,16 @@ Add people by searching an address, using your current location, or tapping the 
 ![Meetline on desktop](docs/screenshot-desktop.png)
 
 ## What it does
-- **2 to 8 people.** Search (Photon, then Nominatim as fallback), "Use my location" (browser geolocation, with live updates while the tab is open), "Pick on map", or right-click / long-press the map.
+- **2 to 8 people.** Search (Photon, then Nominatim as fallback; press Enter or the Add button), "Use my location" (browser geolocation, with live updates while the tab is open), "Pick on map", or right-click / long-press the map.
 - **Per-person travel mode:** drive, cycle or walk.
 - **Place type:** cafe, restaurant, mall, park, or the exact fair point.
 - **Two rankings:**
   - *Fairest* minimises the longest trip (minimax). Good when you do not want one person stuck in traffic for an hour.
   - *Least total* minimises the sum of all trips (geometric median). Good for fuel or overall time.
 - **Real road times** from OSRM (car, bike and foot profiles). If the router is unreachable, Meetline falls back to straight-line estimates and says so.
+- **Meeting plan:** pick a meeting time in the Meet at panel and every person gets a leave-by time (meeting time minus their trip). Each trip also shows as a bar that ends at the venue, so the person who has to leave first is obvious.
+- **Bus/train links:** times are computed for driving, cycling and walking; each person also gets a Bus/train link that opens Google Maps transit directions for the same trip.
+- **Fair zone:** the dashed ring on the map is labelled on desktop; it is the area around the fairest middle point where Meetline searches.
 - **Arrival strip:** every ranked place shows one dot per person on a shared time axis, so you can see how balanced it is before reading any number.
 - **Venue facts from OpenStreetMap:** when a place has `opening_hours`, the card says "Open now · until 22:00" or "Closed · opens tomorrow 08:00" (your device's local time). The Meet at panel also shows cuisine, takeaway, outdoor seating, wheelchair access and a website link when those tags exist. Hours the parser does not understand are shown as written, never guessed.
 - **Share plan:** the whole plan (people, modes, place) is encoded in the link. Nothing is stored on a server. The link includes each person's start point, so send it to the group only, not a public post.
@@ -45,7 +48,7 @@ No build step and no API keys. Leaflet 1.9.4 is vendored in `vendor/leaflet`.
 
 ## Data sources and limits
 - Map tiles: OpenStreetMap. Search: Photon (komoot) and Nominatim. Routing: OSRM via routing.openstreetmap.de. All free community services with fair-use limits; this app makes a handful of requests per search. For heavy use, point `window.MEETLINE_CONFIG` at your own tile, search and routing servers.
-- No public transport routing.
+- Public transport is not computed in-app; the Bus/train link hands each trip to Google Maps. Leave-by times use road times without live traffic.
 - No live location sharing between phones: each person's position is entered on one device, or sent around with the share link.
 - Venue details are only as good as OpenStreetMap: many places have no hours or cuisine tags, and there are no photos or ratings. Public holidays, seasonal hours and sunrise/sunset rules are not evaluated (shown as raw text).
 - Venue coverage depends on OpenStreetMap data in your area.
