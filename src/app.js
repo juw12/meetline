@@ -17,11 +17,30 @@
     bike: 'https://routing.openstreetmap.de/routed-bike',
     foot: 'https://routing.openstreetmap.de/routed-foot',
   };
-  const MODE_LABEL = { car: 'Car or motorbike', bike: 'Bicycle', foot: 'Walk' };
-  const MODE_SHORT = { car: 'Car / moto', bike: 'Bike', foot: 'Walk' };
+  const MODES = ['car', 'bike', 'foot', 'transit'];
+  const MODE_LABEL = { car: 'Car or motorbike', bike: 'Bicycle', foot: 'Walk', transit: 'Bus or train' };
+  const MODE_SHORT = { car: 'Car / moto', bike: 'Bike', foot: 'Walk', transit: 'Transit' };
+  // Public transport times come from Transitous (open GTFS timetables). Until a schedule answers,
+  // a transit trip is estimated from the road network: a bit slower than driving plus waiting time.
+  const TRANSIT_API = 'https://api.transitous.org/api/v1/plan';
+  const TRANSIT_ROAD_FACTOR = 1.7;
+  const TRANSIT_OVERHEAD_S = 480;
+  const TRANSIT_MAX_LOOKUPS = 15;
+  const TRANSIT_MODE_NAME = {
+    BUS: 'Bus', COACH: 'Coach', TRAM: 'Tram', SUBWAY: 'Metro', METRO: 'Metro', FERRY: 'Ferry',
+    RAIL: 'Train', REGIONAL_RAIL: 'Train', REGIONAL_FAST_RAIL: 'Train', HIGHSPEED_RAIL: 'Train',
+    LONG_DISTANCE: 'Train', NIGHT_RAIL: 'Train', SUBURBAN: 'Train', FUNICULAR: 'Funicular', AERIAL_LIFT: 'Cable car',
+  };
+  // Live group: how often a phone republishes its position, and how often others re-plan.
+  const LIVE_MIN_GAP_MS = 15000;
+  const LIVE_HEARTBEAT_MS = 60000;
+  const LIVE_MOVE_M = 50;
+  const LIVE_REPLAN_MS = 45000;
+  const LIVE_STALE_MS = 10 * 60 * 1000;
+  const Live = window.MeetLive || null;
   // Venues closer than this to a better-ranked one are the same building or block: fold them into one card.
   const SAME_PLACE_M = 60;
-  const GMAPS_MODE = { car: 'driving', bike: 'bicycling', foot: 'walking' };
+  const GMAPS_MODE = { car: 'driving', bike: 'bicycling', foot: 'walking', transit: 'transit' };
   const CATEGORIES = [
     { id: 'cafe', label: 'Cafe', query: 'cafe' },
     { id: 'restaurant', label: 'Restaurant', query: 'restaurant' },
@@ -46,6 +65,8 @@
     locate: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
     close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>',
+    transit: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="3.5" width="13" height="13.5" rx="2.5"/><path d="M5.5 11h13M9 17l-1.5 3.5M15 17l1.5 3.5"/><circle cx="9" cy="14" r=".8"/><circle cx="15" cy="14" r=".8"/></svg>',
+    live: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.2"/><path d="M8.2 8.2a5.4 5.4 0 0 0 0 7.6M15.8 8.2a5.4 5.4 0 0 1 0 7.6M5.4 5.4a9.3 9.3 0 0 0 0 13.2M18.6 5.4a9.3 9.3 0 0 1 0 13.2"/></svg>',
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -99,6 +120,9 @@
     picking: false,
     invitedVenue: null,
     nextId: 1,
+    transitNote: '',
+    keepSelection: false,
+    live: null,
   };
 
   let map;
@@ -227,18 +251,20 @@
     const modes = [...new Set(people.map((p) => p.mode))];
     await Promise.all(modes.map(async (mode) => {
       const group = people.map((p, i) => ({ p, i })).filter((x) => x.p.mode === mode);
+      const router = ROUTER[mode] || ROUTER.car;
+      const adjust = mode === 'transit' ? (d) => d * TRANSIT_ROAD_FACTOR + TRANSIT_OVERHEAD_S : (d) => d;
       const coords = group.map((x) => x.p).concat(candidates).map((c) => `${c.lon.toFixed(6)},${c.lat.toFixed(6)}`).join(';');
       const sources = group.map((_, k) => k).join(';');
       const destinations = candidates.map((_, k) => k + group.length).join(';');
       try {
-        const data = await fetchJSON(`${ROUTER[mode]}/table/v1/driving/${coords}?sources=${sources}&destinations=${destinations}&annotations=duration,distance`, 20000);
+        const data = await fetchJSON(`${router}/table/v1/driving/${coords}?sources=${sources}&destinations=${destinations}&annotations=duration,distance`, 20000);
         if (data.code !== 'Ok') {
           throw new Error(data.code);
         }
         group.forEach((x, k) => {
           candidates.forEach((_, j) => {
             const d = data.durations[k][j];
-            durations[x.i][j] = d == null ? Infinity : d;
+            durations[x.i][j] = d == null ? Infinity : adjust(d);
             distances[x.i][j] = data.distances && data.distances[k][j] != null ? data.distances[k][j] : Infinity;
           });
         });
@@ -256,8 +282,68 @@
     return { durations, distances, estimated };
   }
 
+  const transitCache = new Map();
+
+  function transitSummary(legs) {
+    const rides = legs.filter((leg) => leg.mode !== 'WALK' && leg.mode !== 'BIKE' && leg.mode !== 'CAR');
+    const walkMin = Math.round(legs.filter((leg) => leg.mode === 'WALK').reduce((s, leg) => s + (leg.duration || 0), 0) / 60);
+    if (!rides.length) {
+      return 'Walk only';
+    }
+    const names = rides.map((leg) => `${TRANSIT_MODE_NAME[leg.mode] || 'Transit'} ${leg.routeShortName || ''}`.trim());
+    return names.join(', then ') + (walkMin > 0 ? ` · ${walkMin} min walk` : '');
+  }
+
+  // One public transport trip from Transitous, departing now. Null when there is no timetable data.
+  async function transitTrip(person, venue) {
+    const key = [person.lat, person.lon, venue.lat, venue.lon].map((n) => n.toFixed(4)).join(',');
+    const cached = transitCache.get(key);
+    if (cached && Date.now() - cached.at < 10 * 60 * 1000) {
+      return cached.trip;
+    }
+    let trip = null;
+    try {
+      const data = await fetchJSON(`${TRANSIT_API}?fromPlace=${person.lat.toFixed(6)},${person.lon.toFixed(6)}&toPlace=${venue.lat.toFixed(6)},${venue.lon.toFixed(6)}&numItineraries=1`, 20000);
+      const options = (data.itineraries || []).concat(data.direct || []).filter((it) => it && it.duration > 0 && it.legs);
+      options.sort((x, y) => x.duration - y.duration);
+      const best = options[0];
+      // A long walk-only answer means there is no useful service here: let the caller fall back.
+      if (best && (best.legs.some((leg) => leg.mode !== 'WALK') || best.duration < 25 * 60)) {
+        const coords = [];
+        best.legs.forEach((leg) => {
+          if (leg.legGeometry && leg.legGeometry.points) {
+            G.decodePolyline(leg.legGeometry.points, leg.legGeometry.precision || 7).forEach((pt) => coords.push(pt));
+          }
+        });
+        let distance = 0;
+        for (let i = 1; i < coords.length; i++) {
+          distance += G.haversine({ lat: coords[i - 1][0], lon: coords[i - 1][1] }, { lat: coords[i][0], lon: coords[i][1] });
+        }
+        trip = {
+          coords: coords.length > 1 ? coords : [[person.lat, person.lon], [venue.lat, venue.lon]],
+          duration: best.duration,
+          distance: distance || G.estimateTrip(person, venue, 'transit').distance,
+          estimated: false,
+          summary: transitSummary(best.legs),
+          transfers: best.transfers || 0,
+        };
+      }
+    } catch (error) {
+      trip = null;
+    }
+    transitCache.set(key, { at: Date.now(), trip });
+    return trip;
+  }
+
   async function fetchRoute(person, venue) {
-    const url = `${ROUTER[person.mode]}/route/v1/driving/${person.lon.toFixed(6)},${person.lat.toFixed(6)};${venue.lon.toFixed(6)},${venue.lat.toFixed(6)}?overview=full&geometries=geojson`;
+    if (person.mode === 'transit') {
+      const trip = await transitTrip(person, venue);
+      if (trip) {
+        return trip;
+      }
+    }
+    const transit = person.mode === 'transit';
+    const url = `${transit ? ROUTER.car : ROUTER[person.mode]}/route/v1/driving/${person.lon.toFixed(6)},${person.lat.toFixed(6)};${venue.lon.toFixed(6)},${venue.lat.toFixed(6)}?overview=full&geometries=geojson`;
     try {
       const data = await fetchJSON(url, 20000);
       if (data.code !== 'Ok' || !data.routes.length) {
@@ -266,9 +352,9 @@
       const route = data.routes[0];
       return {
         coords: route.geometry.coordinates.map((c) => [c[1], c[0]]),
-        duration: route.duration,
+        duration: transit ? route.duration * TRANSIT_ROAD_FACTOR + TRANSIT_OVERHEAD_S : route.duration,
         distance: route.distance,
-        estimated: false,
+        estimated: transit,
       };
     } catch (error) {
       const trip = G.estimateTrip(person, venue, person.mode);
@@ -319,6 +405,8 @@
       mode: data.mode || 'car',
       place: data.place || '',
       isMe: Boolean(data.isMe),
+      liveId: data.liveId || null,
+      liveAt: data.liveAt || 0,
       colorIndex: freeColorIndex(),
     };
     state.people.push(person);
@@ -337,6 +425,9 @@
   function removePerson(id) {
     const person = state.people.find((p) => p.id === id);
     state.people = state.people.filter((p) => p.id !== id);
+    if (person && person.liveId && state.live) {
+      state.live.hidden.add(person.liveId);
+    }
     if (person && person.isMe) {
       stopWatch();
     }
@@ -349,6 +440,13 @@
       return;
     }
     Object.assign(person, patch);
+    if (person.isMe && state.live && ('mode' in patch || 'name' in patch)) {
+      if ('name' in patch && state.live.joined) {
+        state.live.name = person.name;
+        saveLive();
+      }
+      livePublish(true);
+    }
     if (recompute) {
       changed();
     } else {
@@ -377,13 +475,15 @@
         updatePerson(me.id, { lat, lon, place: '' }, true);
         reverseLabel(lat, lon).then((label) => updatePerson(me.id, { place: label }, false));
       } else {
-        addPerson({ name: 'You', lat, lon, isMe: true });
+        addPerson({ name: (state.live && state.live.joined && state.live.name) || 'You', lat, lon, isMe: true });
       }
       if (state.people.length < 2) {
         map.setView([lat, lon], 14);
         setStatus('idle', '');
       }
       startWatch();
+      livePublish(true, { lat, lon });
+      renderLive();
     }, (err) => {
       const messages = {
         1: 'Location access is blocked. Allow it in your browser\'s site settings, or search an address instead.',
@@ -392,6 +492,11 @@
       };
       setStatus('idle', '');
       toast(messages[err.code] || 'Could not get your location.');
+      if (state.live && state.live.joined && !state.people.some((p) => p.isMe)) {
+        state.live.joined = false;
+        saveLive();
+        renderLive();
+      }
     }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
   }
 
@@ -407,6 +512,7 @@
         return;
       }
       const next = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      livePublish(false, next);
       if (G.haversine(me, next) > 150) {
         updatePerson(me.id, next, true);
       }
@@ -637,13 +743,23 @@
     if (token !== runToken) {
       return;
     }
-    const ranked = G.rankCandidates(candidates, matrix.durations, matrix.distances, state.objective)
+    let ranked = G.rankCandidates(candidates, matrix.durations, matrix.distances, state.objective)
       .filter((c) => c.reachable)
       .slice(0, CFG.resultCount);
+    state.transitNote = '';
+    if (ranked.length && people.some((p) => p.mode === 'transit')) {
+      setStatus('busy', 'Checking bus and train timetables...');
+      ranked = await refineTransit(people, ranked);
+      if (token !== runToken) {
+        return;
+      }
+    }
     state.estimated = matrix.estimated.some(Boolean);
+    const previousId = state.keepSelection ? state.selectedId : null;
+    state.keepSelection = false;
     state.ranked = ranked;
     state.note = note;
-    let selected = ranked[0];
+    let selected = ranked.find((c) => c.id === previousId) || ranked[0];
     if (state.invitedVenue) {
       const match = ranked.find((c) => G.haversine(c, state.invitedVenue) < 40);
       if (match) {
@@ -662,6 +778,33 @@
     await loadRoutes(token);
   }
 
+  // Replace road-based transit estimates with real timetable trips for the shortlisted places, then re-rank.
+  async function refineTransit(people, ranked) {
+    const riders = people.map((p, i) => (p.mode === 'transit' ? i : -1)).filter((i) => i >= 0);
+    const venueCount = Math.max(1, Math.min(ranked.length, Math.floor(TRANSIT_MAX_LOOKUPS / riders.length)));
+    const pairs = [];
+    ranked.slice(0, venueCount).forEach((venue, j) => {
+      riders.forEach((i) => pairs.push({ j, i }));
+    });
+    const trips = await Promise.all(pairs.map(({ j, i }) => transitTrip(people[i], ranked[j])));
+    const durations = people.map((_, i) => ranked.map((v) => v.times[i]));
+    const distances = people.map((_, i) => ranked.map((v) => v.dists[i]));
+    let found = 0;
+    pairs.forEach(({ j, i }, k) => {
+      if (trips[k]) {
+        durations[i][j] = trips[k].duration;
+        distances[i][j] = trips[k].distance;
+        found += 1;
+      }
+    });
+    if (!found) {
+      state.transitNote = 'No bus or train timetable covers this area, so transit times are rough estimates. Use the Route link to check.';
+    } else if (found < pairs.length) {
+      state.transitNote = 'Some transit times are estimates: no timetable answer for every trip.';
+    }
+    return G.rankCandidates(ranked, durations, distances, state.objective).filter((c) => c.reachable);
+  }
+
   async function loadRoutes(token) {
     const venue = selectedVenue();
     if (!venue) {
@@ -677,8 +820,8 @@
     people.forEach((p, i) => {
       state.routes[p.id] = routes[i];
     });
-    const anyEstimated = routes.some((r) => r.estimated) || state.estimated;
-    setStatus('ready', state.note || (anyEstimated ? 'Router unreachable for some trips: times are straight-line estimates.' : ''));
+    const roadEstimated = routes.some((r, i) => r.estimated && people[i].mode !== 'transit') || state.estimated;
+    setStatus('ready', state.note || state.transitNote || (roadEstimated ? 'Router unreachable for some trips: times are straight-line estimates.' : ''));
     renderDetail();
     renderRoutes();
     fitToPlan();
@@ -731,6 +874,33 @@
     }, 4200);
   }
 
+  function agoText(ms) {
+    const minutes = Math.floor(ms / 60000);
+    if (minutes < 1) {
+      return 'now';
+    }
+    if (minutes < 60) {
+      return `${minutes} min ago`;
+    }
+    return `${Math.floor(minutes / 60)} h ago`;
+  }
+
+  function liveBadge(p) {
+    if (p.liveId) {
+      const age = Date.now() - p.liveAt;
+      return age > LIVE_STALE_MS
+        ? `<span class="person-live is-stale">Seen ${agoText(age)}</span>`
+        : `<span class="person-live">Live · ${agoText(age)}</span>`;
+    }
+    if (p.isMe && state.live && state.live.joined) {
+      return '<span class="person-live">Sharing live</span>';
+    }
+    if (p.isMe && watchId !== null) {
+      return '<span class="person-live">Live</span>';
+    }
+    return '';
+  }
+
   function renderPeople() {
     const list = $('#people');
     if (!list) {
@@ -741,8 +911,8 @@
       const item = el('li', 'person');
       item.dataset.id = p.id;
       item.style.setProperty('--c', colorFor(p));
-      const modes = ['car', 'bike', 'foot'].map((m) => `<button type="button" class="mode-btn${p.mode === m ? ' is-on' : ''}" data-mode="${m}" aria-pressed="${p.mode === m}" title="${MODE_LABEL[m]}">${ICON[m]}<span class="mode-text">${MODE_SHORT[m]}</span></button>`).join('');
-      const live = p.isMe && watchId !== null ? '<span class="person-live">Live</span>' : '';
+      const modes = MODES.map((m) => `<button type="button" class="mode-btn${p.mode === m ? ' is-on' : ''}" data-mode="${m}" aria-pressed="${p.mode === m}" title="${MODE_LABEL[m]}">${ICON[m]}<span class="mode-text">${MODE_SHORT[m]}</span></button>`).join('');
+      const live = liveBadge(p);
       item.innerHTML = `
         <span class="person-mark" aria-hidden="true">${esc((p.name || '?').trim().charAt(0).toUpperCase() || '?')}</span>
         <div class="person-main">
@@ -926,17 +1096,22 @@
       const barShare = slowest > 0 ? Math.max(4, Math.round((duration / slowest) * 100)) : 100;
       const distance = route ? route.distance : venue.dists[i];
       const approx = route && route.estimated ? ' approx.' : '';
+      const how = p.mode === 'transit' && route && route.summary
+        ? esc(route.summary)
+        : `${MODE_SHORT[p.mode]} · ${G.formatDistance(distance)}${approx}`;
       const href = `https://www.google.com/maps/dir/?api=1&origin=${p.lat},${p.lon}&destination=${venue.lat},${venue.lon}&travelmode=${GMAPS_MODE[p.mode]}`;
-      const transitHref = `https://www.google.com/maps/dir/?api=1&origin=${p.lat},${p.lon}&destination=${venue.lat},${venue.lon}&travelmode=transit`;
       return `<li class="leg" style="--c:${colorFor(p)}">
           <span class="leg-mark" aria-hidden="true">${esc((p.name || '?').charAt(0).toUpperCase())}</span>
-          <span class="leg-who"><span class="leg-name">${esc(p.name)}</span><span class="leg-mode"><span>${MODE_SHORT[p.mode]} · ${G.formatDistance(distance)}${approx}</span><a class="leg-transit" href="${transitHref}" target="_blank" rel="noopener" aria-label="Bus or train directions for ${esc(p.name)} in Google Maps">Bus/train</a></span></span>
+          <span class="leg-who"><span class="leg-name">${esc(p.name)}</span><span class="leg-mode"><span>${how}</span></span></span>
           <span class="leg-time">${G.formatDuration(duration)}</span>
           <a class="leg-go" href="${href}" target="_blank" rel="noopener" aria-label="Directions for ${esc(p.name)} in Google Maps">${ICON.arrow}<span>Route</span></a>
           <span class="leg-bar" aria-hidden="true"><i style="width:${barShare}%"></i></span>
         </li>`;
     }).join('');
-    const where = `https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lon}`;
+    const where = venue.isPoint
+      ? `https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lon}`
+      : `https://www.google.com/maps/search/${encodeURIComponent(venue.name)}/@${venue.lat.toFixed(6)},${venue.lon.toFixed(6)},18z`;
+    const whereLabel = 'Open in Google Maps';
     // Arrive together: pick a meeting time; each person's leave time is that time minus their trip.
     let departureLine = '';
     if (state.people.length >= 2) {
@@ -948,7 +1123,7 @@
         .join('');
       departureLine = `<div class="depart-line">
           <label class="depart-label" for="meet-time">Meet at <input id="meet-time" class="depart-time" type="time" value="${clockText(meetMinutes)}" step="300"></label>
-          <span class="depart-caption">Leave by</span>${steps}
+          <span class="depart-caption">Leave by, earliest first · road times without traffic</span>${steps}
         </div>`;
     }
     // Venue facts from OSM tags: open state on its own line, the rest as one plain line.
@@ -977,10 +1152,12 @@
       <ol class="legs">${rows}</ol>
       ${departureLine}
       <div class="detail-actions">
-        <button type="button" class="btn btn-primary" data-action="share">Share this plan</button>
-        <a class="text-link" href="${where}" target="_blank" rel="noopener">Open in Google Maps</a>
+        <button type="button" class="btn btn-primary" data-action="share">${state.live ? 'Invite to live group' : 'Share this plan'}</button>
+        <a class="text-link" href="${where}" target="_blank" rel="noopener" title="${venue.isPoint ? 'Open this point in Google Maps' : 'Place page with photos, reviews and live traffic'}">${whereLabel}</a>
       </div>
-      <p class="share-note">The link includes each person's start point, so send it to your group only. Nothing is saved on a server.</p>`;
+      <p class="share-note">${state.live
+        ? 'Live positions are encrypted on each phone; the relay only sees scrambled data. Sharing stops when someone leaves or closes the page.'
+        : 'The link includes each person\'s start point, so send it to your group only. Nothing is saved on a server.'}</p>`;
     box.querySelector('[data-action="share"]').addEventListener('click', sharePlan);
     const meetInput = box.querySelector('#meet-time');
     if (meetInput) {
@@ -1176,6 +1353,7 @@
 
   function renderAll() {
     renderPeople();
+    renderLive();
     renderControls();
     renderResults();
     renderDetail();
@@ -1183,6 +1361,342 @@
     renderMapCenter();
     renderMapVenues();
     renderRoutes();
+  }
+
+  /* ---------- live group ---------- */
+
+  let liveTicker = null;
+  let liveReplanTimer = null;
+  let lastLiveReplan = 0;
+  let liveFormOpen = false;
+
+  function saveLive() {
+    const live = state.live;
+    if (!live) {
+      store.removeItem('meetline:live');
+      return;
+    }
+    store.setItem('meetline:live', JSON.stringify({
+      room: live.room,
+      key: live.key,
+      myId: live.myId,
+      name: live.name,
+      joined: live.joined,
+    }));
+  }
+
+  function loadSavedLive() {
+    try {
+      return JSON.parse(store.getItem('meetline:live') || 'null');
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function liveLink() {
+    const base = location.href.split('#')[0].replace(/[?&]demo(=[^&]*)?/, '').replace(/\?$/, '');
+    return `${base}#${Live.inviteFragment(state.live)}`;
+  }
+
+  function openLive(invite, saved) {
+    if (!Live || !Live.supported()) {
+      toast('Live groups need a secure page (https) in a current browser.');
+      return false;
+    }
+    closeLive(false);
+    const same = saved && saved.room === invite.room;
+    const live = {
+      room: invite.room,
+      key: invite.key,
+      myId: same && saved.myId ? saved.myId : Live.randomToken(9),
+      name: (same && saved.name) || store.getItem('meetline:name') || '',
+      joined: false,
+      status: 'connecting',
+      lastSent: 0,
+      lastPos: null,
+      hidden: new Set(),
+    };
+    state.live = live;
+    live.conn = Live.connect(invite, {
+      onUpdate: onLiveUpdate,
+      onStatus: (kind) => {
+        if (state.live === live && live.status !== kind) {
+          live.status = kind;
+          renderLive();
+        }
+      },
+    });
+    liveTicker = setInterval(liveTick, 30000);
+    saveLive();
+    syncHash();
+    renderLive();
+    renderDetail();
+    return true;
+  }
+
+  function closeLive(announce) {
+    const live = state.live;
+    if (!live) {
+      return;
+    }
+    if (announce && live.joined) {
+      live.conn.publish({ v: 1, id: live.myId, x: 'leave', t: Date.now() });
+    }
+    live.conn.close();
+    clearInterval(liveTicker);
+    clearTimeout(liveReplanTimer);
+    liveReplanTimer = null;
+    state.live = null;
+  }
+
+  function startLive(name) {
+    if (openLive(Live.newInvite(), null)) {
+      joinLive(name);
+      toast('Live group started. Tap Invite and send the link to your group chat.');
+    }
+  }
+
+  function joinLive(name) {
+    const live = state.live;
+    if (!live) {
+      return;
+    }
+    live.name = (name || '').trim().slice(0, 24) || 'Friend';
+    store.setItem('meetline:name', live.name);
+    live.joined = true;
+    liveFormOpen = false;
+    saveLive();
+    const me = state.people.find((p) => p.isMe);
+    if (me) {
+      updatePerson(me.id, { name: live.name }, false);
+      renderMapPeople();
+    }
+    if (me && watchId !== null) {
+      livePublish(true);
+    } else {
+      locateMe();
+    }
+    renderLive();
+    renderPeople();
+  }
+
+  function leaveLive() {
+    closeLive(true);
+    saveLive();
+    stopWatch();
+    state.people = state.people.filter((p) => !p.liveId);
+    changed();
+    renderLive();
+    renderDetail();
+    toast('You left the live group. Your position is no longer shared.');
+  }
+
+  // Send my position: always when forced, otherwise after moving 50 m (at most every 15 s)
+  // or once a minute as a heartbeat so others see "Live · now".
+  function livePublish(force, pos) {
+    const live = state.live;
+    const me = state.people.find((p) => p.isMe);
+    if (!live || !live.joined || !me) {
+      return;
+    }
+    const here = pos || { lat: me.lat, lon: me.lon };
+    const now = Date.now();
+    const moved = live.lastPos ? G.haversine(live.lastPos, here) : Infinity;
+    const since = now - live.lastSent;
+    if (!force && (since < LIVE_MIN_GAP_MS || (moved < LIVE_MOVE_M && since < LIVE_HEARTBEAT_MS))) {
+      return;
+    }
+    live.lastSent = now;
+    live.lastPos = here;
+    live.conn.publish({
+      v: 1,
+      id: live.myId,
+      n: live.name || me.name,
+      a: Number(here.lat.toFixed(5)),
+      o: Number(here.lon.toFixed(5)),
+      m: me.mode,
+      t: now,
+    }).then((ok) => {
+      if (state.live === live) {
+        live.status = ok ? 'online' : 'offline';
+        renderLive();
+      }
+    });
+  }
+
+  function liveTick() {
+    renderPeople();
+    renderLive();
+    if (document.visibilityState !== 'hidden') {
+      livePublish(false);
+    }
+  }
+
+  function onLiveUpdate(update) {
+    const live = state.live;
+    if (!live || update.id === live.myId || live.hidden.has(update.id)) {
+      return;
+    }
+    const person = state.people.find((p) => p.liveId === update.id);
+    if (update.leave) {
+      if (person) {
+        state.people = state.people.filter((p) => p !== person);
+        toast(`${person.name} left the live group.`);
+        changed();
+        renderLive();
+      }
+      return;
+    }
+    if (person) {
+      if (update.t < person.liveAt) {
+        return;
+      }
+      const moved = G.haversine(person, update) > 150;
+      const modeChanged = person.mode !== update.mode;
+      Object.assign(person, { name: update.name, lat: update.lat, lon: update.lon, mode: update.mode, liveAt: update.t });
+      if (moved) {
+        person.place = '';
+        reverseLabel(update.lat, update.lon).then((label) => {
+          person.place = label;
+          renderPeople();
+        });
+      }
+      if (moved || modeChanged) {
+        scheduleLiveReplan();
+      } else {
+        renderPeople();
+        renderMapPeople();
+      }
+    } else {
+      if (state.people.length >= CFG.maxPeople) {
+        return;
+      }
+      addPerson({ name: update.name, lat: update.lat, lon: update.lon, mode: update.mode, liveId: update.id, liveAt: update.t }, { silent: true });
+      scheduleLiveReplan();
+      fitPeople();
+    }
+    renderLive();
+  }
+
+  // Re-plan after live moves, but not more than once every 45 s, keeping the chosen place selected.
+  function scheduleLiveReplan() {
+    renderPeople();
+    renderMapPeople();
+    if (liveReplanTimer) {
+      return;
+    }
+    const wait = Math.max(600, LIVE_REPLAN_MS - (Date.now() - lastLiveReplan));
+    liveReplanTimer = setTimeout(() => {
+      liveReplanTimer = null;
+      lastLiveReplan = Date.now();
+      state.keepSelection = true;
+      recompute();
+    }, wait);
+  }
+
+  function fitPeople() {
+    if (state.people.length && !state.ranked.length) {
+      map.fitBounds(L.latLngBounds(state.people.map((p) => [p.lat, p.lon])), { padding: [60, 60], maxZoom: 14 });
+    }
+  }
+
+  function liveSharingCount() {
+    const live = state.live;
+    if (!live) {
+      return 0;
+    }
+    const others = state.people.filter((p) => p.liveId && Date.now() - p.liveAt <= LIVE_STALE_MS).length;
+    const me = live.joined && state.people.some((p) => p.isMe) ? 1 : 0;
+    return others + me;
+  }
+
+  function renderLive() {
+    const box = $('#live');
+    if (!box) {
+      return;
+    }
+    const live = state.live;
+    document.documentElement.dataset.live = live ? (live.joined ? 'on' : 'join') : 'off';
+    if (!Live) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    const note = '<p class="live-note">Encrypted on your phone before it is sent; the relay (ntfy.sh) only passes on scrambled data. Sharing stops when you leave or close the page.</p>';
+    if (live && live.joined) {
+      const count = liveSharingCount();
+      const statusText = {
+        online: 'Connected. Positions update as people move.',
+        connecting: 'Connecting...',
+        reconnecting: 'Connection dropped. Retrying...',
+        offline: 'Offline. Retrying...',
+      }[live.status] || 'Connecting...';
+      const waiting = state.people.some((p) => p.isMe) ? statusText : 'Waiting for your location...';
+      box.innerHTML = `<div class="live-row is-on">
+          <span class="live-dot" data-status="${esc(live.status)}" aria-hidden="true"></span>
+          <div class="live-text"><b>Live group · ${count} sharing</b><span>${esc(waiting)}</span></div>
+          <button type="button" class="btn btn-quiet live-btn" data-live="invite">Invite</button>
+          <button type="button" class="link live-leave" data-live="leave">Leave</button>
+        </div>`;
+    } else if (live || liveFormOpen) {
+      const joining = Boolean(live);
+      const count = liveSharingCount();
+      const name = esc((live && live.name) || store.getItem('meetline:name') || '');
+      box.innerHTML = `<form class="live-form" novalidate>
+          <p class="live-title">${joining ? 'Join this live group' : 'Start a live group'}</p>
+          <p class="live-sub">${joining
+            ? (count ? `${count} ${count === 1 ? 'person is' : 'people are'} sharing now. Add yourself to see the fairest place for everyone.` : 'Add yourself and the group appears as people join.')
+            : 'Everyone who opens your link can share where they are. Each dot moves as they travel.'}</p>
+          <div class="live-fields">
+            <label class="sr" for="live-name">Your name</label>
+            <input id="live-name" class="live-name" maxlength="24" placeholder="Your name" autocomplete="nickname" value="${name}">
+            <button type="submit" class="btn btn-primary live-go">Share my location</button>
+          </div>
+          ${note}
+          ${joining ? '' : '<button type="button" class="link live-cancel" data-live="cancel">Cancel</button>'}
+        </form>`;
+    } else {
+      box.innerHTML = `<div class="live-row">
+          <span class="live-icon" aria-hidden="true">${ICON.live}</span>
+          <div class="live-text"><b>Live group <span class="live-opt">optional</span></b><span>Off unless you start it. Each person chooses to share from their own phone.</span></div>
+          <button type="button" class="link live-start" data-live="form">Start</button>
+        </div>`;
+    }
+    const form = box.querySelector('.live-form');
+    if (form) {
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const value = box.querySelector('#live-name').value;
+        if (!value.trim()) {
+          box.querySelector('#live-name').focus();
+          toast('Add your name so the group knows who you are.');
+          return;
+        }
+        if (state.live) {
+          joinLive(value);
+        } else {
+          startLive(value);
+        }
+      });
+    }
+    box.querySelectorAll('[data-live]').forEach((btn) => btn.addEventListener('click', () => {
+      const action = btn.dataset.live;
+      if (action === 'form') {
+        liveFormOpen = true;
+        renderLive();
+        const input = box.querySelector('#live-name');
+        if (input) {
+          input.focus();
+        }
+      } else if (action === 'cancel') {
+        liveFormOpen = false;
+        renderLive();
+      } else if (action === 'invite') {
+        sharePlan();
+      } else if (action === 'leave') {
+        leaveLive();
+      }
+    }));
   }
 
   /* ---------- sharing ---------- */
@@ -1203,6 +1717,14 @@
     if (document.documentElement.dataset.demo === 'true') {
       return;
     }
+    if (state.live) {
+      try {
+        history.replaceState(null, '', `#${Live.inviteFragment(state.live)}`);
+      } catch (error) {
+        /* file:// in some browsers */
+      }
+      return;
+    }
     const venue = selectedVenue();
     const query = state.people.length ? G.encodePlan({
       people: state.people,
@@ -1219,13 +1741,16 @@
   }
 
   async function sharePlan() {
-    if (!state.people.length) {
+    if (!state.people.length && !state.live) {
       toast('Add people first, then share the plan.');
       return;
     }
-    const url = planLink();
     const venue = selectedVenue();
-    const text = venue ? `Let's meet at ${venue.name}. Routes for everyone:` : 'Add your location so we can find a place to meet:';
+    const url = state.live ? liveLink() : planLink();
+    let text = venue ? `Let's meet at ${venue.name}. Routes for everyone:` : 'Add your location so we can find a place to meet:';
+    if (state.live) {
+      text = 'Join my live group on Meetline: share where you are and we find the fairest place to meet.';
+    }
     if (navigator.share && matchMedia('(pointer: coarse)').matches) {
       try {
         await navigator.share({ title: 'Meetline plan', text, url });
@@ -1238,7 +1763,7 @@
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast('Link copied. Whoever opens it sees this group and can add their own location.');
+      toast(state.live ? 'Invite link copied. Send it to your group chat only.' : 'Link copied. Whoever opens it sees this group and can add their own location.');
     } catch (error) {
       window.prompt('Copy this link:', url);
     }
@@ -1377,7 +1902,18 @@
     const params = new URLSearchParams(location.search);
     const demo = params.has('demo') || location.hash === '#demo';
     const fromHash = G.decodePlan(location.hash);
-    if (demo && params.get('demo') !== 'live' && window.MEETLINE_SNAPSHOT) {
+    const invite = Live && !demo ? Live.parseInvite(location.hash) : null;
+    if (invite) {
+      renderAll();
+      const saved = loadSavedLive();
+      if (openLive(invite, saved)) {
+        if (saved && saved.room === invite.room && saved.joined) {
+          joinLive(saved.name);
+        } else {
+          toast('You were invited to a live group. Add your name to share where you are.');
+        }
+      }
+    } else if (demo && params.get('demo') !== 'live' && window.MEETLINE_SNAPSHOT) {
       document.documentElement.dataset.demo = 'true';
       loadSnapshot(window.MEETLINE_SNAPSHOT);
     } else if (demo) {
@@ -1412,6 +1948,6 @@
     window.addEventListener('resize', () => map.invalidateSize());
   }
 
-  window.Meetline = { state, snapshot, recompute, addPerson, loadPeople, sharePlan, planLink, CATEGORIES };
+  window.Meetline = { state, snapshot, recompute, addPerson, loadPeople, sharePlan, planLink, CATEGORIES, onLiveUpdate, openLive, leaveLive };
   document.addEventListener('DOMContentLoaded', boot);
 })();
