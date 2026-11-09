@@ -102,8 +102,8 @@ body { font: 14px/1.45 var(--sans); color: var(--ink); background: var(--bg); -w
 
 .person { grid-template-columns: 32px minmax(0, 1fr) 28px; align-items: center; row-gap: 10px; padding: 12px 0; }
 .person-place { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.person .mode { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 2px; border-radius: var(--radius); }
-.person .mode-btn { width: auto; height: 30px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 6px; font-size: 12.5px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+.person .mode { grid-column: 1 / -1; display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.15fr; gap: 2px; padding: 2px; border-radius: var(--radius); }
+.person .mode-btn { width: auto; height: 30px; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 4px; font-size: 12.5px; font-weight: 500; color: var(--muted); white-space: nowrap; }
 .person .mode-btn svg { width: 16px; height: 16px; flex: none; }
 .person .mode-btn:hover { color: var(--ink); background: var(--soft); }
 .person .mode-btn.is-on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(242, 178, 51, 0.55); }
@@ -281,3 +281,38 @@ html[data-result="true"] .toolbar-add .btn:hover { color: var(--ink); background
 .leg-transit:hover { color: var(--ink); text-decoration-color: var(--accent); }
 .depart-caption { flex: 1 1 100%; margin-top: 2px; }
 .depart-line { column-gap: 12px; }
+
+/* Live group: one quiet row until used; the form and the connected bar share the same frame. */
+.live { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+.live[hidden] { display: none; }
+.live-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; }
+.live-row.is-on { grid-template-columns: 10px minmax(0, 1fr) auto auto; }
+.live-icon svg { width: 20px; height: 20px; fill: none; stroke: var(--accent); stroke-width: 1.7; stroke-linecap: round; display: block; }
+.live-text { display: flex; flex-direction: column; min-width: 0; }
+.live-text b { font-weight: 600; font-size: 14px; }
+.live-text span { font-size: 12.5px; color: var(--muted); }
+.live-btn { height: 32px; padding: 0 12px; font-size: 13px; }
+.live-leave { font-size: 13px; padding: 4px 2px; color: var(--muted); }
+.live-leave:hover { color: var(--ink); }
+.live-dot { width: 10px; height: 10px; border-radius: 50%; background: #4cc27a; box-shadow: 0 0 0 4px rgba(76, 194, 122, 0.18); }
+.live-dot[data-status="connecting"], .live-dot[data-status="reconnecting"], .live-dot[data-status="offline"] { background: var(--accent); box-shadow: 0 0 0 4px rgba(242, 178, 51, 0.18); }
+.live-form { padding: 12px; }
+.live-title { margin: 0; font-weight: 600; font-size: 14px; }
+.live-sub { margin: 2px 0 10px; font-size: 12.5px; color: var(--muted); }
+.live-fields { display: flex; gap: 8px; }
+.live-name { flex: 1; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); font: inherit; }
+.live-name:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.live-go { height: 38px; white-space: nowrap; }
+.live-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.live-cancel { margin-top: 6px; font-size: 13px; padding: 2px 0; }
+.person-live.is-stale { color: var(--muted); }
+html[data-live="join"] #empty { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot[data-status="online"] { animation: live-pulse 2.4s ease-in-out infinite; }
+}
+@keyframes live-pulse { 50% { box-shadow: 0 0 0 7px rgba(76, 194, 122, 0.05); } }
+.live-start { font-size: 13px; font-weight: 600; padding: 4px 2px; color: var(--ink); text-decoration-color: #4a525c; }
+.live-start:hover { text-decoration-color: var(--accent); }
+.live-opt { font: 500 10.5px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-left: 6px; }
+/* Invited to a live group: the join form moves to the top of the panel. */
+html[data-live="join"] .block-live, html[data-live="on"] .block-live { order: -1; }
