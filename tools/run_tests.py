@@ -81,6 +81,22 @@ def main():
         report["demo"] = dict(demo, ready=ready, errors=errors)
         ok = ok and ready and demo["venues"] >= 3 and demo["routes"] >= 3 and not errors
 
+        # Meeting plan: choose a meeting time and read each person's leave time; check transit links and Add.
+        plan = page.evaluate(
+            "(() => { const input = document.getElementById('meet-time');"
+            " if (!input) { return {ok: false}; }"
+            " input.value = '18:00'; input.dispatchEvent(new Event('change'));"
+            " const steps = Array.from(document.querySelectorAll('#detail .depart-step')).map(s => s.textContent.trim());"
+            " return {ok: true, value: document.getElementById('meet-time').value, steps,"
+            " transit: document.querySelectorAll('#detail .leg-transit').length,"
+            " transitHref: (document.querySelector('#detail .leg-transit') || {}).href || '',"
+            " addButton: !!document.getElementById('btn-add')}; })()"
+        )
+        report["plan"] = plan
+        ok = ok and plan.get("ok") and plan.get("value") == "18:00" and len(plan.get("steps", [])) == 3
+        ok = ok and any("Juwen" in s and ("5:33" in s or "17:33" in s) for s in plan.get("steps", []))
+        ok = ok and plan.get("transit") == 3 and "travelmode=transit" in plan.get("transitHref", "") and plan.get("addButton")
+
         # Venue facts: serve the snapshot with known OSM tags on the top venue, then read the UI.
         page = browser.new_page(viewport={"width": 1440, "height": 900})
         errors = collect_errors(page)
