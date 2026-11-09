@@ -66,6 +66,14 @@ All text pairs pass AA (4.5:1).
 - Venues within 60 m of each other merge into one card with a "Same block:" line, so the list does not repeat one building.
 - Venue facts come only from OSM tags. The open state sits on its own line (ink when open, muted when closed; no green/red, the accent stays reserved). Cuisine, extras and the website link follow as one plain muted line joined with " · ". Nothing renders when a venue has no tags.
 
+## Meet at panel (hone 5)
+- Each leg row ends with a 3 px bar in the person's colour, right-aligned so every bar ends at the venue; the longest trip fills the row.
+- Below the legs: "Meet at [time]" (native time input, mono, dark color-scheme) and "Leave by" with one name + clock time per person, earliest first. Default time is the next quarter hour that gives the slowest person their trip plus 10 minutes.
+- Each leg has a quiet underlined "Bus/train" link (muted, not accent) that opens Google Maps transit directions.
+- Desktop map labels the dashed ring "Fair zone · similar trip times" (mono, amber outline); hidden under 760 px where the ring is small.
+- Search field has a visible "Add" button inside the right edge, same action as Enter.
+- `--muted` raised to #aab3bd for AA contrast on small labels.
+
 ## Signature: the arrival strip
 Each ranked place shows one dot per person on a shared time axis, with a bar from the shortest to the longest trip. You can see fairness (a short bar) before reading a number. The selected place gets an amber left rule and an amber rank badge; its pin on the map is the only amber pin.
 
