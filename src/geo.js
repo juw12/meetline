@@ -13,7 +13,7 @@
   const M_PER_DEG_LON_EQ = 111320;
 
   // Fallback speeds when the road router is unreachable (urban averages, km/h).
-  const FALLBACK_SPEED_KMH = { car: 30, bike: 14, foot: 4.8 };
+  const FALLBACK_SPEED_KMH = { car: 30, bike: 14, foot: 4.8, transit: 16 };
   // Road distance is longer than the straight line; 1.35 is a common urban detour factor.
   const DETOUR_FACTOR = 1.35;
 
@@ -404,7 +404,36 @@
   }
 
   // Share-link encoding: names are URI-encoded, coordinates kept to 5 decimals (about 1 m).
-  const MODES = ['car', 'bike', 'foot'];
+  const MODES = ['car', 'bike', 'foot', 'transit'];
+
+  // Decode an encoded polyline (Google format). Transitous returns precision 7, OSRM-style tools 5 or 6.
+  function decodePolyline(text, precision) {
+    const factor = Math.pow(10, precision || 5);
+    const points = [];
+    let index = 0;
+    let lat = 0;
+    let lon = 0;
+    while (index < text.length) {
+      for (let axis = 0; axis < 2; axis++) {
+        let result = 0;
+        let shift = 0;
+        let byte;
+        do {
+          byte = text.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20 && index < text.length);
+        const delta = result & 1 ? ~(result >> 1) : result >> 1;
+        if (axis === 0) {
+          lat += delta;
+        } else {
+          lon += delta;
+        }
+      }
+      points.push([lat / factor, lon / factor]);
+    }
+    return points;
+  }
 
   function encodePlan(plan) {
     const params = new URLSearchParams();
@@ -492,6 +521,7 @@
     venueFacts,
     encodePlan,
     decodePlan,
+    decodePolyline,
     FALLBACK_SPEED_KMH,
   };
 });
