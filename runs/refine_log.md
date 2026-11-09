@@ -86,3 +86,22 @@ Shipped h5r6 (asset version 20261109a):
 - Tests: tools/run_tests.py adds a plan check (18:00 meeting gives Juwen 5:33 PM, Andi 5:43 PM, Sari 5:49 PM; 3 transit links; Add button). All pass. slop_check PASS. Overflow 0 at 320/390/1440.
 - Pooled bots: shipped 5.94 mean, 14/18 would use vs baseline 5.89, 12/18.
 - Honest read: council prefers it clearly; the bots are flat-to-slightly-better and still ask for venue photos/ratings, live traffic, computed public transport and live location sharing, which need a server or paid APIs.
+
+
+## Hone 6 (live group, timetable transit, photos and reviews)
+Goal: remove the limits left after Hone 5 instead of explaining them: live location sharing between phones, computed public transport, venue photos/reviews.
+
+| Round | Change | Council (3 AI judges) vs h5r6 | Bots (simulated users) |
+|---|---|---|---|
+| h6r1 | live group (ntfy.sh relay, AES-GCM, key in #fragment), Transit mode via Transitous, place-page link | tie 0-0-3, 7.5 | 6.17 (5/6) |
+| h6r2 | drop per-row Bus/train link, "Open in Google Maps" label, leave-by order, quiet Start | 1-1-1, 7.9 | not pooled |
+| h6r3 | (harness failure: local server refused, phone shot empty; discarded) | - | - |
+| h6r4 | no-traffic note moved to Leave-by caption, Start as plain link | tie 0-0-3, 7.8 | 5.50 (3/6) |
+| h6r5 (shipped) | live group moved below options, labelled optional; jumps to top when invited | 1-1-1, 7.8 | 6.17, 5.83 (8/12) |
+
+Shipped h6r5 (asset version 20261109b):
+- Live group: each phone encrypts {name, position, mode} with AES-GCM (key and room only in the link #fragment) and posts to ntfy.sh; others subscribe over SSE (poll fallback), decrypt, and see dots move ("Live · now", "Seen 12 min ago"). Publishes after 50 m (min 15 s gap) or a 60 s heartbeat; re-plans at most every 45 s and keeps the chosen place. Leave announces and stops sharing.
+- Transit mode: road-based estimate for the whole candidate set, then Transitous timetable trips for the shortlist (max 15 lookups), re-ranked; leg shows "Bus 105 · 9 min walk" and the decoded route; honest fallback note where no timetable exists (Batam today).
+- "Open in Google Maps" opens the place page (name at the venue position) for photos, reviews and live traffic.
+- Tests: tools/live_test.py 19/19 with a mocked relay (two browsers: start, invite, decrypt, forged message rejected, join, leave; transit timetable leg); 17/17 against the real ntfy.sh. tools/run_tests.py all ok. slop_check PASS. Overflow 0 at 320/390/1440.
+- Honest read: the council sees it as visually equal to h5r6 (ties in 3 clean rounds); screenshots cannot show live sharing or timetable routing working. Pooled bots 6.00 mean vs 5.94, would-use 8/12 vs 14/18, within noise. Shipped for the functional gains, verified by tests.
