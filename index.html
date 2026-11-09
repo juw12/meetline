@@ -10,8 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600&family=JetBrains+Mono:wght@500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./src/base.css?v=20261108c">
-<link rel="stylesheet" href="style.css?v=20261108c">
+<link rel="stylesheet" href="./src/base.css?v=20261109a">
+<link rel="stylesheet" href="style.css?v=20261109a">
 </head>
 <body class="app">
 <div class="console">
@@ -21,6 +21,7 @@
       <div class="search">
           <label class="sr" for="search-input">Add a person by address or place</label>
           <input id="search-input" type="search" placeholder="Add a person: address or place" autocomplete="off" role="combobox" aria-controls="search-suggest" aria-expanded="false">
+          <button id="btn-add" type="button" class="search-add">Add</button>
           <ul id="search-suggest" class="suggest" role="listbox" hidden></ul>
         </div>
       <button id="btn-locate" type="button" class="btn btn-locate"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Use my location</button>
@@ -51,7 +52,7 @@
       </ol>
       <p class="privacy">Nothing to sign up for. Your group list is saved only on this device. The share link includes where each person starts, so send it to your group chat, not a public post.</p>
     </details>
-    <footer class="foot">Maps, places and routes from OpenStreetMap. Driving, cycling and walking only; no public transport.</footer>
+    <footer class="foot">Maps, places and routes from OpenStreetMap. Road times for driving, cycling and walking; each person also gets a Bus/train link to Google Maps.</footer>
   </aside>
   <main class="col-map"><div id="map" aria-label="Map"></div></main>
   <aside class="col col-right" aria-label="Results">
@@ -66,11 +67,11 @@
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <script src="./vendor/leaflet/leaflet.js"></script>
-<script src="./src/geo.js?v=20261108c"></script>
-<script src="./src/demo-snapshot.js?v=20261108c"></script>
+<script src="./src/geo.js?v=20261109a"></script>
+<script src="./src/demo-snapshot.js?v=20261109a"></script>
 <script>
 window.MEETLINE_CONFIG = { colors: ['#4D9BFF', '#FF8A3D', '#4CC27A', '#FF5C5C', '#2FC6CF', '#E8C547', '#AEB6BF', '#C98C5A'] };
 </script>
-<script src="./src/app.js?v=20261108c"></script>
+<script src="./src/app.js?v=20261109a"></script>
 </body>
 </html>
