@@ -66,3 +66,22 @@ Final pick, stated plainly: no round met the strict keep rule. h4r2 is the only 
 What the bots still ask for is outside a static UI: public transport, live location sharing, venue photos and ratings, a separate motorbike mode. Those need a routing or places backend.
 Final checks: run_tests ok (geo, demo 4 venues / 7 routes, facts), slop_check PASS (0 blockers, 0 warnings), no overflow at 320/390/1440, asset version 20261108c.
 Lesson: confirm map tiles and web fonts actually loaded in every screenshot before any judge sees it; a blank map scored like a design problem.
+
+## Hone 5 (bigger functional gains: meeting plan, transit links, signature bars)
+Rule: keep a round only if the 3-judge council picks it in a position-swapped pairwise vote AND the 6 simulated-user bots do not get worse. Bot scores turned out to be noisy (baseline resampled 3x: 6.33 / 5.33 / 6.00, would-use 6, 2, 4 of 6), so bots were pooled across resamples.
+
+| Round | Change | Council pairwise vs ref | Bots (mean, would-use) |
+|---|---|---|---|
+| h5b0 | shipped Hone 4 | council 8.3 | 6.33, 5.33, 6.00 (12/18) |
+| h5r1 | collapsed options, Share place only, Map link, transit links | lost to h5b0 (A, tie, tie) | 6.00 (5/6) |
+| h5r2 | arrival bars, departure line, Fair zone label | won vs h5b0 (B 2, tie 1) | 6.00, 5.83 (7/12) |
+| h5r3 | r2 + phone result above map, muted contrast | tie vs r2 (no win) | 6.00 (5/6) |
+| h5r5 | r2 + Add button, contrast, leave-order schedule, zone label text | won vs h5b0 (B 2, tie 1) | 5.33, 5.67 (7/12) |
+| h5r6 (shipped) | r5 + meeting time picker with clock leave-by times, per-person Bus/train link, privacy line | won vs h5b0 (B 2, tie 1), council 8.0 | 6.00, 5.83 |
+
+Shipped h5r6 (asset version 20261109a):
+- Meet at panel: right-aligned arrival bar per person (all bars end at the venue), then "Meet at [time]" with each person's leave-by clock time.
+- Bus/train link per person (Google Maps transit directions); footer and README say transit is not computed in-app.
+- Visible Add button in the search field; desktop map labels the ring "Fair zone · similar trip times"; --muted raised to #aab3bd.
+- Tests: tools/run_tests.py adds a plan check (18:00 meeting gives Juwen 5:33 PM, Andi 5:43 PM, Sari 5:49 PM; 3 transit links; Add button). All pass. slop_check PASS. Overflow 0 at 320/390/1440.
+- Honest read: council prefers it clearly; the bots are flat-to-slightly-better and still ask for venue photos/ratings, live traffic, computed public transport and live location sharing, which need a server or paid APIs.
