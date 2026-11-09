@@ -77,11 +77,12 @@ Rule: keep a round only if the 3-judge council picks it in a position-swapped pa
 | h5r2 | arrival bars, departure line, Fair zone label | won vs h5b0 (B 2, tie 1) | 6.00, 5.83 (7/12) |
 | h5r3 | r2 + phone result above map, muted contrast | tie vs r2 (no win) | 6.00 (5/6) |
 | h5r5 | r2 + Add button, contrast, leave-order schedule, zone label text | won vs h5b0 (B 2, tie 1) | 5.33, 5.67 (7/12) |
-| h5r6 (shipped) | r5 + meeting time picker with clock leave-by times, per-person Bus/train link, privacy line | won vs h5b0 (B 2, tie 1), council 8.0 | 6.00, 5.83 |
+| h5r6 (shipped) | r5 + meeting time picker with clock leave-by times, per-person Bus/train link, privacy line | won vs h5b0 (B 2, tie 1), council 8.0 | 6.00, 5.83, 6.00 (14/18) |
 
 Shipped h5r6 (asset version 20261109a):
 - Meet at panel: right-aligned arrival bar per person (all bars end at the venue), then "Meet at [time]" with each person's leave-by clock time.
 - Bus/train link per person (Google Maps transit directions); footer and README say transit is not computed in-app.
 - Visible Add button in the search field; desktop map labels the ring "Fair zone · similar trip times"; --muted raised to #aab3bd.
 - Tests: tools/run_tests.py adds a plan check (18:00 meeting gives Juwen 5:33 PM, Andi 5:43 PM, Sari 5:49 PM; 3 transit links; Add button). All pass. slop_check PASS. Overflow 0 at 320/390/1440.
+- Pooled bots: shipped 5.94 mean, 14/18 would use vs baseline 5.89, 12/18.
 - Honest read: council prefers it clearly; the bots are flat-to-slightly-better and still ask for venue photos/ratings, live traffic, computed public transport and live location sharing, which need a server or paid APIs.
