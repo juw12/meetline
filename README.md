@@ -5,7 +5,8 @@ Find the fairest place for two or more people to meet, and the road route for ea
 Add people by searching an address, using your current location, or tapping the map. Meetline looks for cafes, restaurants, malls or parks around the point where nobody travels too long, asks a road router for the real travel time from every person to every candidate, and ranks the places. Each person gets a coloured route on the map, a time, and a link that opens the same trip in Google Maps.
 
 **Live:** https://juw12.github.io/meetline/  
-**Sample group:** https://juw12.github.io/meetline/?demo
+**Sample group:** https://juw12.github.io/meetline/?demo  
+**On an iPhone:** open the live link in Safari, tap Share, then *Add to Home Screen*. It opens full screen with its own icon. It still needs a connection: the map and the routes come from the network.
 
 ![Meetline on desktop](docs/screenshot-desktop.png)
 
