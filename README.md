@@ -10,6 +10,15 @@ Add people by searching an address, using your current location, or tapping the 
 
 ![Meetline on desktop](docs/screenshot-desktop.png)
 
+## Get it on your device
+
+- **Windows:** [`Meetline-Windows-Setup.exe`](https://github.com/juw12/meetline/releases/download/desktop/Meetline-Windows-Setup.exe) (no admin needed; if Windows says it protected your PC, choose *More info → Run anyway*), or without installing [`Meetline-Windows-Portable.zip`](https://github.com/juw12/meetline/releases/download/desktop/Meetline-Windows-Portable.zip).
+- **Mac:** [`Meetline-macOS-AppleSilicon.dmg`](https://github.com/juw12/meetline/releases/download/desktop/Meetline-macOS-AppleSilicon.dmg) (M1 and newer) or [`Meetline-macOS-Intel.dmg`](https://github.com/juw12/meetline/releases/download/desktop/Meetline-macOS-Intel.dmg). The first time, macOS blocks it because it is not notarized: **System Settings → Privacy & Security → Open Anyway**.
+- **Android:** [`Meetline-android.apk`](https://github.com/juw12/meetline/releases/download/android/Meetline-android.apk): open the file on the phone and allow your browser to install apps once.
+- **iPhone:** open https://juw12.github.io/meetline/ in Safari, tap Share, then **Add to Home Screen**.
+
+The Windows, Mac and Android apps are the web app in its own window ([`desktop/`](desktop/README.md), [`android/`](android/README.md)) and change with it. Each build is opened on GitHub's machines before it is published: on Windows and on a Mac the page loads, the app starts and can store data; on an Android emulator it installs, opens and stays up. They are not code-signed or notarised, and no real phone or PC has run them yet.
+
 ## What it does
 - **2 to 8 people.** Search (Photon, then Nominatim as fallback; press Enter or the Add button), "Use my location" (browser geolocation, with live updates while the tab is open), "Pick on map", or right-click / long-press the map.
 - **Live group (optional, new):** off by default. Tap Start in the Live group box below the options, enter your name, and send the invite link. Everyone who joins shares their position from their own phone; dots move as people travel ("Live · now", "Seen 12 min ago"), and the plan re-ranks at most every 45 s while keeping the chosen place selected. Updates are encrypted on the phone with AES-GCM; the room id and key live only in the link's `#fragment`, which browsers never send to a server. The public ntfy.sh relay only passes on ciphertext (cached a few hours). Leave stops sharing and tells the others.
